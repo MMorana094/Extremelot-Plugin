@@ -28,7 +28,9 @@ function carica_plugin() {
 					"<div class='comando' id='apriazioncine' title='Apri Azioni'><i class='fa fa-diamond'></i></div>"+
 					//"<div class='comando' id='mapparapida' title='Mappa Rapida'><i class='fa fa-map-signs'></i></div>"+
 					"<div class='comando' id='miascheda' title='Apri Scheda'><i class='fa fa-id-badge'></i></div>"+
-					
+
+					"<div class='comando' id='botteghe' title='Apri Botteghe'><i class='fa fa-shopping-bag'></i></div>"+
+
 					"<div class='comando' id='scelto_forum' title='Apri Bacheche'><i class='fa fa-clipboard'></i></div>"+
 					"<div class='comando' id='apri_online' title='Elenco online'><i class='fa fa-users'></i></div>"+ 
 					"<div class='comando' id='leggiposta' title='Posta'><i class='fa fa-envelope'></i></div>"+
@@ -153,7 +155,7 @@ $(document).ready(function() {
 if (framealtro) { finestra('descLuogo','Descrizione del luogo in cui ti trovi','https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/vedi_desc_21.asp','width=950,height=550'); }  
 })
 .on('click','#scelta_2',function(e) { top.logo.document.valore.lot.value; } )
-.on('click','#miascheda',function(e) { vedischeda(nome); } )
+.on('click','#miascheda',function(e) { vedischeda(); } )
 .on('click','#scelta_7',function(e) { apriazioncine(); })
 
 .on('click','#regole, #scelta_6',function(e) { finestra('regoleLot','Regolamenti','https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/lotnew/leggi/leggi.asp','width=950,height=550'); 
@@ -426,7 +428,91 @@ $(document).ready(function() {
 function aziona(id) { top.result.location='../proc/azioni.asp?azione='+id; } 
 
 /*----vediamo quanto siamo belli*/
-function vedischeda(nome) { var url = "https://www.extremelot.eu/proc/avatar.asp?id="+nome; finestra('scheda_'+nome,'Scheda '+nome,'https://extremeplug.altervista.org/docs/plugin/altri.php?classe=scheda&link='+url,'width=1000,height=600'); }
+function vedischeda() {
+  // Controlla se il dialogo esiste già
+  if ($("#confermaSchedaDialog").length) {
+    $("#confermaSchedaDialog").remove();
+  }
+
+  // Crea il dialogo
+  const dialogHtml = `
+    <div id="confermaSchedaDialog" title="Vedi Scheda?">
+      <p>Vuoi vedere la tua scheda?</p>
+    </div>
+  `;
+  $('body').append(dialogHtml);
+
+  // Costruzione dialog
+  $("#confermaSchedaDialog").dialog({
+    modal: true,
+    buttons: {
+      "Sì": function () {
+        $(this).dialog("close");
+
+        // Prende il nome del pg dal DOM
+        const nome = $("#datidelpg input[name='player']").val();
+        if (!nome) {
+          alert("Nome PG non trovato.");
+          return;
+        }
+
+        apriScheda(nome);
+      },
+      "No": function () {
+        $(this).dialog("close");
+
+        // Prompt per inserire il nome manualmente
+        const nome = prompt("Inserisci il nome del personaggio:");
+        if (!nome) return;
+
+        apriScheda(nome);
+      }
+    },
+    close: function () {
+      $(this).remove();
+    }
+  });
+
+  // Funzione per aprire la scheda
+  function apriScheda(nome) {
+    const pulito = nome.replace(/[^\w\-]/g, '');
+    const url = "https://www.extremelot.eu/proc/schedaPG/scheda.asp?ID=" + encodeURIComponent(pulito);
+    finestra('scheda_' + pulito, 'Scheda ' + pulito,
+      'https://extremeplug.altervista.org/docs/plugin/altri.php?classe=scheda&link=' + url,
+      'width=1000,height=600');
+  }
+}
+
+function apriBotteghe() {
+  finestra(
+    'bottegheLot',
+    'Botteghe di Lot',
+    'https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/lotnew/botteghe.asp',
+    'width=90%,height=550'
+  );
+}
+
+$(document).on('click', '#botteghe', function (e) {
+  e.preventDefault();
+  apriBotteghe();
+
+  // ---- chiusura/apertura dialog botteghe
+  $(document).ready(function () {
+    var dialogOptions = {
+      autoOpen: false
+    };
+
+    $("#dlg-bottegheLot").dialog(dialogOptions);
+
+    $("#botteghe").click(function () {
+      if (!$("#dlg-bottegheLot").dialog("isOpen")) {
+        $("#dlg-bottegheLot").dialog("open");
+      } else {
+        $("#dlg-bottegheLot").dialog("close");
+      }
+    });
+  });
+});
 
 
 function nofarniente() { } 
