@@ -51,7 +51,43 @@ function carica_plugin() {
 
 
 
-	$("<div style='position:absolute;top:2px;height:32px;right:0px;border-left:0px solid #000;left:680px;overflow:hidden;background-image:none'><div id='altroframeperaltraroba' style='margin:5px;'></div>").appendTo('body');
+  $(`<div id="menu-container" style="
+      position: fixed;
+      top: 2px;
+      right: 5px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+  ">
+      <div id="hamburger" style="
+          cursor: pointer;
+          padding: 6px 10px;
+          font-size: 22px;
+          background: rgba(255,255,255,0.85);
+          color: #222;
+          max-height: 30px;
+          overflow-y: auto;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          box-shadow: 0 0 3px rgba(0,0,0,0.2);
+          display: none;
+      ">☰</div>
+      <div id="altroframeperaltraroba" style="
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          margin-top: 4px;
+          max-height: 30px;
+          overflow-y: auto;
+          background: rgba(255,255,255,0.9);
+          border-radius: 4px;
+          border: 1px solid #ccc;
+          box-shadow: 0 0 3px rgba(0,0,0,0.1);
+      "></div>
+  </div>`).appendTo('body');
+
+
 	$("<div id='lamiamappa'></div>").appendTo('body');
 	
 	//$('#altroframeperaltraroba').load('https://extremeplug.altervista.org/docs/plugin/tasti_fato.php');
@@ -62,6 +98,25 @@ function carica_plugin() {
 	setTimeout(caricapaci,1000);
 
 	 $(window).on('click','input',function( event ) { event.preventDefault();alert('clicco');  });
+
+   // Nasconde o mostra il menu se schermo piccolo
+function aggiornaMenuResponsive() {
+    if (window.innerWidth < 1000) {
+        $('#altroframeperaltraroba').hide();
+        $('#hamburger').show();
+    } else {
+        $('#altroframeperaltraroba').show();
+        $('#hamburger').hide();
+    }
+}
+
+$('#hamburger').on('click', function() {
+    $('#altroframeperaltraroba').slideToggle();
+});
+
+aggiornaMenuResponsive();
+$(window).on('resize', aggiornaMenuResponsive);
+
 	 
 }
 
