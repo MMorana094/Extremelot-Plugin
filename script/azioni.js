@@ -343,7 +343,8 @@ var luogo = $("#imieidati input[name='titolo']").val();
 luogo = luogo.replace("<b>", "").replace("</b>", "");
 if (framechat) {
 var info = framechat.html();
-info = info.replace(/\&gt;/g, "»</i>").replace(/\&lt;/g,'<i>«');
+info = info.replace(/\&gt;/g, "»</i>")
+            .replace(/\&lt;/g,'<i>«');
 
 
 var salvachat = "<div id='miachattina' style='display: none';><form id='salvataggio' name='salvataggio'><input type='hidden' name='pg' id='pg' value='"+nome+"' /><input type='hidden' name='luogo' id='luogo' value=\""+luogo+"\" /><textarea id='chat' name='chat'>"+info+"</textarea></form><div id='esito_salva'></div></div>";
@@ -481,15 +482,50 @@ function aziona(id) { top.result.location='../proc/azioni.asp?azione='+id; }
 
 /*----vediamo quanto siamo belli*/
 function vedischeda() {
-  // Prompt diretto per il nome del personaggio
-  const nome = prompt("Inserisci il nome del personaggio:");
-  
-  // Se non inserisce niente o annulla, esce
-  if (!nome) return;
-  
-  // Chiama la funzione per aprire la scheda
-  apriScheda(nome);
-  
+  // Controlla se il dialogo esiste già
+  if ($("#confermaSchedaDialog").length) {
+    $("#confermaSchedaDialog").remove();
+  }
+
+  // Crea il dialogo
+  const dialogHtml = `
+    <div id="confermaSchedaDialog" title="Vedi Scheda?">
+      <p>Vuoi vedere la tua scheda?</p>
+    </div>
+  `;
+  $('body').append(dialogHtml);
+
+  // Costruzione dialog
+  $("#confermaSchedaDialog").dialog({
+    modal: true,
+    buttons: {
+      "Sì": function () {
+        $(this).dialog("close");
+
+        // Prende il nome del pg dal DOM
+        const nome = $("#datidelpg input[name='player']").val();
+        if (!nome) {
+          alert("Nome PG non trovato.");
+          return;
+        }
+
+        apriScheda(nome);
+      },
+      "No": function () {
+        $(this).dialog("close");
+
+        // Prompt per inserire il nome manualmente
+        const nome = prompt("Inserisci il nome del personaggio:");
+        if (!nome) return;
+
+        apriScheda(nome);
+      }
+    },
+    close: function () {
+      $(this).remove();
+    }
+  });
+
   // Funzione per aprire la scheda
   function apriScheda(nome) {
     const pulito = nome.replace(/[^\w\-]/g, '');
