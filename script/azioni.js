@@ -26,7 +26,7 @@ function carica_plugin() {
 					"<div class='comando' id='lente' title='Vedi la descrizione del luogo'><img src='http://www.extremelot.eu/proc/img/_descr.gif' /></div>"+  
 					"<div class='comando' id='dovegioco' title='Dove vuoi giocare oggi?'><i class='fa fa-hourglass'></i></div>"+
 					"<div class='comando' id='apriazioncine' title='Apri Azioni'><i class='fa fa-diamond'></i></div>"+
-					//"<div class='comando' id='mapparapida' title='Mappa Rapida'><i class='fa fa-map-signs'></i></div>"+
+					          //"<div class='comando' id='mapparapida' title='Mappa Rapida'><i class='fa fa-map-signs'></i></div>"+
 					"<div class='comando' id='miascheda' title='Apri Scheda'><i class='fa fa-id-badge'></i></div>"+
 					"<div class='comando' id='scelto_forum' title='Apri Bacheche'><i class='fa fa-clipboard'></i></div>"+
 					"<div class='comando' id='apri_online' title='Elenco online'><i class='fa fa-users'></i></div>"+ 
@@ -35,8 +35,9 @@ function carica_plugin() {
 					"<div class='comando' id='scriviposta' title='Scrivi Missiva'><i class='fa fa-pencil'></i></div>"+
                     //"<div class='comando' id='cartografia' title='Cartografia di Lot'><i class='fa fa-image'></i></div>"+
 					"<div class='comando' id='banca' title='Banca di Lot'><i class='fa fa-money'></i></div>"+
-					"<div class='comando' id='apri_editor' title='Campo testo per azioni'><i class='fa fa-commenting'></i></div>";
-					
+					"<div class='comando' id='apri_editor' title='Campo testo per azioni'><i class='fa fa-commenting'></i></div>"+
+          "<div class='comando' id='gest_Chat' title='Gestionale'><i class='fa fa-map'></i></div>";
+		
 
 
 	var sceltine = scelte;
@@ -209,6 +210,7 @@ if (framealtro) { finestra('descLuogo','Descrizione del luogo in cui ti trovi','
 .on('click','#scelta_2',function(e) { top.logo.document.valore.lot.value; } )
 .on('click','#miascheda',function(e) { vedischeda(); } )
 .on('click','#scelta_7',function(e) { apriazioncine(); })
+.on('click','#gest_Chat',function(e) { apriGestionale(); } )
 
 .on('click','#regole, #scelta_6',function(e) { finestra('regoleLot','Regolamenti','https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/lotnew/leggi/leggi.asp','width=950,height=550'); 
 
@@ -537,6 +539,43 @@ function vedischeda() {
 }
 
 function nofarniente() { } 
+
+/************************************************/
+/*  GESTORE CHAT  */
+/*************************************************/
+function apriGestionale() {
+    $('#gestionale').remove();
+
+    // creo il contenitore del gestionale
+    let contenitore = $("<div id='gestionale'></div>").appendTo('body');
+
+    // carico il gestionale intero dentro un iframe
+    let iframe = $('<iframe>', {
+        src: "https://www.extremelot.eu/proc/gestionale/dashboardGE.asp",
+        width: "100%",
+        height: "100%",
+        frameborder: 0
+    });
+
+    contenitore.append(iframe);
+
+    // apro il dialog
+    contenitore.dialog({
+        title: 'Gestionale',
+        resizable: true,
+        draggable: true,
+        position: { my: "center top", at: "center top", of: window },
+        minHeight: 400,
+        minWidth: 600,
+        height: 700,
+        width: 1000,
+        modal: false, // così non blocca la pagina sotto
+        close: function(event, ui) {
+            $(this).dialog("destroy").remove();
+        }
+    });
+}
+
 
 /* e dopo tanto lavoro..carichiamo sto plugin all'avvio*/
 $(function(){  
