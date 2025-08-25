@@ -121,12 +121,46 @@ $(window).on('resize', aggiornaMenuResponsive);
 function apriazioncine() { finestra('azioniFinestra','Azioni nel luogo','https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/azioni_21.asp','width=950,height=550');  }
 
 function caricapaci() { 
-var myinfo = $("body", $("frame[name='logo']")[0].contentDocument);
-var mydati = myinfo.html();
-var myframeinfo = "<div id='datidelpg' style='display:hidden;'>"+mydati+"</div>";
-$(myframeinfo).appendTo('body');
+  console.log("[DEBUG] caricapaci() avviata");
 
-var nome = $("#datidelpg input[name='player']").val();
+  // recupera il frame "logo"
+  const frameLogo = $("frame[name='logo']")[0];
+  if (!frameLogo) {
+    console.warn("[DEBUG] frame[name='logo'] non trovato!");
+    return;
+  }
+  console.log("[DEBUG] frame[name='logo'] trovato:", frameLogo);
+
+  // recupera il body del frame
+  const myinfo = $("body", frameLogo.contentDocument);
+  console.log("[DEBUG] body dentro frame logo:", myinfo.length > 0, myinfo);
+
+  // copia l'html
+  const mydati = myinfo.html();
+  console.log("[DEBUG] HTML estratto dal frame logo:", mydati ? mydati.substring(0, 300) + "..." : "(vuoto)");
+
+  // crea il div nascosto con quei dati
+  const myframeinfo = "<div id='datidelpg' style='display:none;'>" + mydati + "</div>";
+  $(myframeinfo).appendTo('body');
+
+  // controlla che il div sia stato creato
+  const divDatidelpg = $("#datidelpg");
+  console.log("[DEBUG] div #datidelpg creato?", divDatidelpg.length > 0, divDatidelpg);
+
+  // cerchiamo l'input player
+  const $inputPlayer = $("#datidelpg input[name='player']");
+  console.log("[DEBUG] input[name='player'] trovato?", $inputPlayer.length > 0, $inputPlayer[0]);
+
+  if ($inputPlayer.length > 0) {
+    console.log("[DEBUG] attributo value:", $inputPlayer.attr("value"));
+    console.log("[DEBUG] proprietà .value:", $inputPlayer[0].value);
+    console.log("[DEBUG] proprietà jQuery .val():", $inputPlayer.val());
+    console.log("[DEBUG] HTML completo dell'input:", $inputPlayer[0].outerHTML);
+  }
+
+  // valore finale
+  const nome = $inputPlayer.val();
+  console.log("[DEBUG] valore finale nome:", nome);
 
 $(document)
 //inserito da me 
@@ -272,11 +306,9 @@ finestra('doveGioco','Dove vuoi giocare?','https://extremeplug.altervista.org/do
 pagina.replace("javascript:dettagli('", ""); pagina = pagina.replace("');", ""); vedischeda(''+pagina+''); })
 
 .on('click','#dlg-vediOnline a[href^="javascript:posta"], #dlg-simboliLot  a[href^="javascript:posta"]',function(e) { e.preventDefault(); var pagina = $(this).attr('href'); pagina = 
-pagina.replace("javascript:posta('", ""); pagina = pagina.replace("');", ""); scriviposta(''+pagina+''); })
+pagina.replace("javascript:posta('", ""); pagina = pagina.replace("');", ""); scriviposta(''+pagina+''); });
 
-;
-
-} 
+}
 /************************************************/
 /* ZONA POSTALOT                                */
 /*************************************************/
@@ -484,43 +516,89 @@ function aziona(id) { top.result.location='../proc/azioni.asp?azione='+id; }
 
 /*----vediamo quanto siamo belli*/
 function vedischeda() {
-  // Controlla se il dialogo esiste già
-  if ($("#confermaSchedaDialog").length) {
-    $("#confermaSchedaDialog").remove();
+  // Rimuove il dialog esistente se già aperto
+  const existing = document.getElementById("confermaSchedaDialog");
+  if (existing) {
+    existing.remove();
   }
 
-  // Crea il dialogo
+  // Funzione per recuperare il nome direttamente dal frame logo
+  function recuperaNomePlayer() {
+    try {
+      // Metodo 1: Accesso diretto al frame logo
+      const frameLogo = document.querySelector("frame[name='logo']");
+      if (frameLogo && frameLogo.contentDocument) {
+        const inputPlayer = frameLogo.contentDocument.querySelector("input[name='player']");
+        if (inputPlayer && inputPlayer.value) {
+          console.log("[DEBUG] Nome trovato nel frame logo:", inputPlayer.value);
+          return inputPlayer.value;
+        }
+      }
+
+      // Metodo 2: Tramite jQuery se disponibile
+      if (typeof $ !== 'undefined') {
+        const $frameLogo = $("frame[name='logo']")[0];
+        if ($frameLogo && $frameLogo.contentDocument) {
+          const $inputPlayer = $("input[name='player']", $frameLogo.contentDocument);
+          if ($inputPlayer.length > 0 && $inputPlayer.val()) {
+            console.log("[DEBUG] Nome trovato tramite jQuery:", $inputPlayer.val());
+            return $inputPlayer.val();
+          }
+        }
+      }
+
+      // Metodo 3: Controlla se esiste già il div datidelpg
+      const divDati = document.getElementById("datidelpg");
+      if (divDati) {
+        const inputPlayer = divDati.querySelector("input[name='player']");
+        if (inputPlayer && inputPlayer.value) {
+          console.log("[DEBUG] Nome trovato in datidelpg:", inputPlayer.value);
+          return inputPlayer.value;
+        }
+      }
+
+      console.log("[DEBUG] Nome non trovato con nessun metodo");
+      return null;
+    } catch (error) {
+      console.error("[DEBUG] Errore nel recupero nome:", error);
+      return null;
+    }
+  }
+
+  // Crea il markup del dialogo
   const dialogHtml = `
     <div id="confermaSchedaDialog" title="Vedi Scheda?">
       <p>Vuoi vedere la tua scheda?</p>
     </div>
   `;
-  $('body').append(dialogHtml);
+  document.body.insertAdjacentHTML("beforeend", dialogHtml);
 
-  // Costruzione dialog
+  // Inizializza il dialog
   $("#confermaSchedaDialog").dialog({
-    modal: true,
     buttons: {
       "Sì": function () {
         $(this).dialog("close");
 
-        // Prende il nome del pg dal DOM
-        const nome = $("#datidelpg input[name='player']").val();
+        let nome = recuperaNomePlayer();
+
         if (!nome) {
-          alert("Nome PG non trovato.");
-          return;
+          alert("Nome PG non trovato nei dati del gioco.");
+          nome = prompt("Inserisci il nome del personaggio:");
         }
 
-        apriScheda(nome);
+        if (nome) {
+          apriScheda(nome);
+        }
       },
       "No": function () {
         $(this).dialog("close");
 
-        // Prompt per inserire il nome manualmente
         const nome = prompt("Inserisci il nome del personaggio:");
-        if (!nome) return;
+        console.log("[DEBUG] nome inserito da prompt:", nome);
 
-        apriScheda(nome);
+        if (nome) {
+          apriScheda(nome);
+        }
       }
     },
     close: function () {
@@ -530,11 +608,36 @@ function vedischeda() {
 
   // Funzione per aprire la scheda
   function apriScheda(nome) {
-    const pulito = nome.replace(/[^\w\-]/g, '');
+    console.log("[DEBUG] apriScheda nome:", nome);
+
+    const pulito = nome.replace(/[^\w\-]/g, "");
+    console.log("[DEBUG] nome pulito:", pulito);
+
     const url = "https://www.extremelot.eu/proc/schedaPG/scheda.asp?ID=" + encodeURIComponent(pulito);
-    finestra('scheda_' + pulito, 'Scheda ' + pulito,
-      'https://extremeplug.altervista.org/docs/plugin/altri.php?classe=scheda&link=' + url,
-      'width=1000,height=600');
+    console.log("[DEBUG] url finale:", url);
+
+    finestra(
+      "scheda_" + pulito,
+      "Scheda " + pulito,
+      "https://extremeplug.altervista.org/docs/plugin/altri.php?classe=scheda&link=" + url,
+      "width=1000,height=600"
+    );
+  }
+}
+
+// Funzione alternativa che forza il caricamento dei dati prima di aprire la scheda
+function vedischedaConCaricamento() {
+  // Prima carica i dati se non sono già presenti
+  if (!document.getElementById("datidelpg")) {
+    console.log("[DEBUG] Caricamento dati del PG...");
+    caricapaci(); // Esegue la funzione che copia i dati dal frame
+    
+    // Attende un momento per il caricamento
+    setTimeout(() => {
+      vedischeda();
+    }, 100);
+  } else {
+    vedischeda();
   }
 }
 
