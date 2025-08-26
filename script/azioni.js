@@ -3,10 +3,40 @@
 PLUGIN Dastian - 07 Agosto 2025 
 In costruzione - basato su Script di Lugantes
 Da sistemare i commenti e l'impaginazione per rendere il file leggibile
-
-
 */
 
+/*************************************************/
+/*                DEBUG MODE INIT                */
+/*************************************************/
+let DEBUG_MODE = false;
+
+// controlla che lo storage sia disponibile
+if (chrome?.storage?.local) {
+  // Leggi lo stato salvato
+  chrome.storage.local.get("DEBUG_MODE", (data) => {
+    DEBUG_MODE = Boolean(data.DEBUG_MODE);
+    debugLog("DEBUG_MODE iniziale:", DEBUG_MODE);
+  });
+
+  // Aggiornati in tempo reale
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.DEBUG_MODE) {
+      DEBUG_MODE = changes.DEBUG_MODE.newValue;
+      debugLog("DEBUG_MODE aggiornato:", DEBUG_MODE);
+    }
+  });
+} else {
+  console.warn("chrome.storage.local non disponibile in questo contesto");
+}
+
+// Funzione centralizzata per log
+function debugLog(...args) {
+  if (DEBUG_MODE) console.log("[DEBUG]", ...args);
+}
+
+/*************************************************/
+/*             CONFIGURAZIONE PLUGIN             */
+/*************************************************/
 function setupPlugin() {	 
 		var scelte = 
 					"<div class='scelta' id='scelta_1'></div>"+
@@ -95,7 +125,9 @@ function setupPlugin() {
 
 	 $(window).on('click','input',function( event ) { event.preventDefault();alert('clicco');  });
 
-   // Nasconde o mostra il menu se schermo piccolo
+/************************************************/
+/*               MENU HAMBURGER                 */
+/************************************************/
 function aggiornaMenuResponsive() {
     if (window.innerWidth < 1000) {
         $('#altroframeperaltraroba').hide();
@@ -113,19 +145,20 @@ $('#hamburger').on('click', function() {
 aggiornaMenuResponsive();
 $(window).on('resize', aggiornaMenuResponsive);
 }
-
-// === FUNZIONE CENTRALE: Recupero dati del PG ===
+/************************************************/
+/*    Recupera i dati del PG dal frame "logo"   */
+/************************************************/
 function RecuperoDatiPG() {
   try {
     const frameLogo = $("frame[name='logo']")[0];
     if (!frameLogo || !frameLogo.contentDocument) {
-      console.warn("[DEBUG] frame[name='logo'] non trovato!");
+      debugLog("[DEBUG] frame[name='logo'] non trovato!");
       return { nome: null, luogo: null, html: null };
     }
 
     const $body = $("body", frameLogo.contentDocument);
     if ($body.length === 0) {
-      console.warn("[DEBUG] Nessun body trovato dentro il frame logo!");
+      debugLog("[DEBUG] Nessun body trovato dentro il frame logo!");
       return { nome: null, luogo: null, html: null };
     }
 
@@ -142,7 +175,7 @@ function RecuperoDatiPG() {
       luogo = luogo.replace(/<\/?b>/g, ""); // pulizia
     }
 
-    console.log("[DEBUG] RecuperoDatiPG ->", { nome, luogo });
+    debugLog("[DEBUG] RecuperoDatiPG ->", { nome, luogo });
     return { nome, luogo, html: datiHTML };
 
   } catch (err) {
@@ -156,23 +189,23 @@ function apriazioncine() { finestra('azioniFinestra','Azioni nel luogo','https:/
 
 // === [1] Recupero dati del PG dal frame "logo" ===
 function importaDatiPG() {
-  console.log("[DEBUG] Avvio importaDatiPG()");
+  debugLog("[DEBUG] Avvio importaDatiPG()");
 
   const frameLogo = $("frame[name='logo']")[0];
   if (!frameLogo) {
-    console.warn("[DEBUG] frame[name='logo'] non trovato!");
+    debugLog("[DEBUG] frame[name='logo'] non trovato!");
     return null;
   }
 
-  console.log("[DEBUG] frame[name='logo'] trovato:", frameLogo);
+  debugLog("[DEBUG] frame[name='logo'] trovato:", frameLogo);
 
   // recupera il body del frame
   const $body = $("body", frameLogo.contentDocument);
-  console.log("[DEBUG] body dentro frame logo:", $body.length > 0, $body);
+  debugLog("[DEBUG] body dentro frame logo:", $body.length > 0, $body);
 
   // copia l'html
   const datiHTML = $body.html();
-  console.log("[DEBUG] HTML estratto:", datiHTML ? datiHTML.substring(0, 300) + "..." : "(vuoto)");
+  debugLog("[DEBUG] HTML estratto:", datiHTML ? datiHTML.substring(0, 300) + "..." : "(vuoto)");
 
   // crea (o sostituisce) il div nascosto
   $("#datidelpg").remove();
@@ -182,20 +215,20 @@ function importaDatiPG() {
   // recupera il player
   const $inputPlayer = $div.find("input[name='player']");
   if ($inputPlayer.length > 0) {
-    console.log("[DEBUG] input[name='player'] trovato:", $inputPlayer[0].outerHTML);
-    console.log("[DEBUG] attr value:", $inputPlayer.attr("value"));
-    console.log("[DEBUG] proprietà .value:", $inputPlayer[0].value);
-    console.log("[DEBUG] jQuery .val():", $inputPlayer.val());
+    debugLog("[DEBUG] input[name='player'] trovato:", $inputPlayer[0].outerHTML);
+    debugLog("[DEBUG] attr value:", $inputPlayer.attr("value"));
+    debugLog("[DEBUG] proprietà .value:", $inputPlayer[0].value);
+    debugLog("[DEBUG] jQuery .val():", $inputPlayer.val());
     return $inputPlayer.val();
   }
 
-  console.warn("[DEBUG] input[name='player'] NON trovato");
+  debugLog("[DEBUG] input[name='player'] NON trovato");
   return null;
 }
 
 // === [2] Setup eventi dei comandi ===
 function setupEventiPlugin() {
-  console.log("[DEBUG] Avvio setupEventiPlugin()");
+  debugLog("[DEBUG] Avvio setupEventiPlugin()");
 
   $(document)
     // Cartografia
@@ -225,28 +258,34 @@ function setupEventiPlugin() {
         "width=950,height=550"
       );
     })
-    // Altri comandi
+    // apri editor
     .on("click", "#apri_editor", function() { apriEditor(); })
+    // bacheca
     .on("click", "#scelto_forum", function() { bacheca($("#imieiforumx").val()); })
+    // salva chat
     .on("click", "#salva_chat", function() { salvaChat(); })
+    // dove gioco
     .on("click", "#dovegioco", function() {
       finestra("doveGioco","Dove vuoi giocare?",
         "https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/chiedove.asp",
         "width=950,height=550"
       );
     })
+    // mappa rapida
     .on("click", "#mapparapida", function() {
       finestra("mapparapida","Mappa Rapida",
         "https://extremeplug.altervista.org/docs/plugin/mapparapida.php",
         "width=700,height=500"
       );
     })
+    // simboli
     .on("click", "#aprisimboli, #scelta_5", function() {
       finestra("simboliLot","Simboli e statuti",
         "https://www.extremelot.eu/lotnew/simboli.asp",
         "width=950,height=550"
       );
     })
+    // descrizione luogo
     .on("click", "#lente", function() {
       const framealtro = $("body", $("frame[name='testo']", $("frame[name='result']")[0].contentDocument)[0].contentDocument);
       if (framealtro) {
@@ -256,34 +295,33 @@ function setupEventiPlugin() {
         );
       }
     })
+    // scheda pg
     .on("click", "#miascheda", function() { vedischeda(); })
+    // gestionale
     .on("click", "#gest_Chat", function() { apriGestionale(); })
+    // regolamenti
     .on("click", "#regole, #scelta_6", function() {
       finestra("regoleLot","Regolamenti",
         "https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/lotnew/leggi/leggi.asp",
         "width=950,height=550"
       );
     })
+    // posta
     .on("click", "#leggiposta, [myid='leggiposta'], #scelta_1", function() { leggiposta(); });
 }
 
 // === [3] Inizializzatore principale ===
 function inizializzaPlugin() {
-  console.log("[DEBUG] Inizializzazione Plugin...");
-
-  const datiPG = RecuperoDatiPG();
-  console.log("[DEBUG] Nome PG recuperato:", datiPG.nome);
+  debugLog("[DEBUG] Inizializzazione Plugin...");
 
   setupEventiPlugin();
-  console.log("[DEBUG] Plugin pronto.");
+  debugLog("[DEBUG] Plugin pronto.");
 }
 
 
 /************************************************/
-/* ZONA POSTALOT                                */
-/*************************************************/
-
-/* ----> scriviamo veloci un postalot*/
+/*                  POSTALOT                    */
+/************************************************/
 function scriviposta(nome) {if (!nome) { var nome = ''; } else { var nome = '?ID='+nome; } finestra('postalot','Piccione','https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/posta/_scrivialtri.asp'+nome,'width=15%,height=250'); 
 
 //------------ verifichiamo che il dialog sia aperto e non apriamone un secondo --------//
@@ -326,7 +364,7 @@ $(document).ready(function() {
 }
 
 /************************************************/
-/*              ZONA salvataggio chat           */
+/*                   SALVA CHAT                 */
 /************************************************/
 
 /*-----salviamo la nostra giocata---*/
@@ -400,8 +438,8 @@ function mostraDialogSalvataggio() {
     close: function () { $(this).dialog("close").remove(); }
   });
 
-  // chiude dopo 4 secondi
-  setTimeout(function() { $("#esito_salva").remove(); }, 4000);
+  // chiude dopo 10 secondi
+  setTimeout(function() { $("#esito_salva").remove(); }, 10000);
 }
 
 // [ENTRY POINT]
@@ -428,7 +466,7 @@ function salvamessaggi() {
 }
 
 /************************************************/
-/* editor 2000 caratteri                        */
+/*              editor 2000 caratteri           */
 /*************************************************/
 
 
@@ -482,8 +520,8 @@ $(document).ready(function() {
 
 
 /************************************************/
-/* BACHECA                                        */
-/*************************************************/
+/*                   BACHECA                    */
+/************************************************/
 
 
 
@@ -522,14 +560,15 @@ $(document).ready(function() {
 
 } 
 /************************************************/
-/* SCARICA AZIONI                                */
-/*************************************************/
+/*                    AZIONI                    */
+/************************************************/
 
 
 function aziona(id) { top.result.location='../proc/azioni.asp?azione='+id; } 
+
 /************************************************/
-/*  SCHEDA PG  */
-/*************************************************/
+/*                SCHEDA PG                     */
+/************************************************/
 // Recupera il nome del PG da varie fonti
 function recuperaNomePlayer() {
   const { nome } = RecuperoDatiPG();
@@ -539,13 +578,13 @@ function recuperaNomePlayer() {
 
 // Pulisce e apre la finestra della scheda
 function apriScheda(nome) {
-  console.log("[DEBUG] apriScheda nome:", nome);
+  debugLog("[DEBUG] apriScheda nome:", nome);
 
   const pulito = nome.replace(/[^\w\-]/g, "");
-  console.log("[DEBUG] nome pulito:", pulito);
+  debugLog("[DEBUG] nome pulito:", pulito);
 
   const url = "https://www.extremelot.eu/proc/schedaPG/scheda.asp?ID=" + encodeURIComponent(pulito);
-  console.log("[DEBUG] url finale:", url);
+  debugLog("[DEBUG] url finale:", url);
 
   finestra(
     "scheda_" + pulito,
@@ -594,7 +633,7 @@ function vedischeda() {
 // Variante con caricamento prima dei dati
 function vedischedaConCaricamento() {
   if (!document.getElementById("datidelpg")) {
-    console.log("[DEBUG] Caricamento dati del PG...");
+    debugLog("[DEBUG] Caricamento dati del PG...");
     inizializzaPlugin();
     setTimeout(() => vedischeda(), 100);
   } else {
@@ -605,8 +644,8 @@ function vedischedaConCaricamento() {
 function nofarniente() { } 
 
 /************************************************/
-/*  GESTORE CHAT  */
-/*************************************************/
+/*             DASHBOARD GESTIONALE             */
+/************************************************/
 function apriGestionale() {
     $('#gestionale').remove();
 
@@ -639,7 +678,6 @@ function apriGestionale() {
         }
     });
 }
-
 
 /* e dopo tanto lavoro..carichiamo sto plugin all'avvio*/
 $(function(){  
