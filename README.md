@@ -24,7 +24,7 @@ Il plugin si integra nella pagina principale di Extremelot (_index2.htm) e aggiu
 
 ## Autori
 
-- Dastian (Adattamento a Manifest V3)
+- Dastian (Adattamento a Manifest V3 e implementazioni future)
 - Lugantes (adattamento e ampliamento)
 - WilliamJ (script originale)
 
