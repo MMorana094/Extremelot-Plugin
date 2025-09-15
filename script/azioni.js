@@ -289,12 +289,30 @@ function setupEventiPlugin() {
       .on('submit','#dlg-vediOnline form[action="chiedove.asp"]',function(e) {  e.preventDefault(); 
         finestra('doveGioco','Dove vuoi giocare?','https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/chiedove.asp','width=950,height=550'); 
       })
-      .on('click','#dlg-vediOnline a[href^="javascript:dettagli"], #dlg-simboliLot  a[href^="javascript:dettagli"]',function(e) { e.preventDefault(); var pagina = $(this).attr('href'); pagina = 
-        pagina.replace("javascript:dettagli('", ""); pagina = pagina.replace("');", ""); vedischeda(''+pagina+''); })
+      // intercetta i link dentro #dlg-vediOnline che puntano a collegati.asp
+      .on("click", "#dlg-vediOnline a[href^='collegati.asp']", function(e) {
+          e.preventDefault();
+          var nomeprova = $(this).attr("href"); // es: collegati.asp?pos=A
+          var nomelink = 'https://www.extremelot.eu/proc/' + nomeprova;
+          var esito = "#dlg-vediOnline";
 
-      .on('click','#dlg-vediOnline a[href^="javascript:posta"], #dlg-simboliLot  a[href^="javascript:posta"]',function(e) { e.preventDefault(); var pagina = $(this).attr('href'); pagina = 
-        pagina.replace("javascript:posta('", ""); pagina = pagina.replace("');", ""); scriviposta(''+pagina+''); })
-      
+          $.get(nomelink).done(function(data) {
+              $(esito).html(data);
+          });
+      })
+
+      // intercetta i link a chiedove.asp
+      .on("click", "#dlg-vediOnline a[href='chiedove.asp']", function(e) {
+          e.preventDefault();
+          finestra(
+              'doveGioco',
+              'Dove vuoi giocare?',
+              'https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/chiedove.asp',
+              'width=950,height=550'
+          );
+      })
+
+
     // apri editor
     .on("click", "#apri_editor", function() { apriEditor(); })
     // bacheca
