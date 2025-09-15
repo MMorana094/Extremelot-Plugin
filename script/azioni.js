@@ -300,7 +300,15 @@ function setupEventiPlugin() {
               $(esito).html(data);
           });
       })
-
+      // click su "Guida di Lot"
+      .on("click", "#dlg-vediOnline a[href='mappa_testuale.html']", function(e) {
+          e.preventDefault();
+          var esito = "#dlg-vediOnline";
+          var nomelink = "https://ordinedelleguide.altervista.org/mappa/index.php";
+          
+          // carica il contenuto nel div
+          $(esito).load(nomelink);
+      })
       // intercetta i link a chiedove.asp
       .on("click", "#dlg-vediOnline a[href='chiedove.asp']", function(e) {
           e.preventDefault();
