@@ -258,6 +258,43 @@ function setupEventiPlugin() {
         "width=950,height=550"
       );
     })
+    .on("submit", '#dlg-vediOnline form[action="collegati.asp?pos=gilda"]',function(e) {  e.preventDefault(); 
+      var modulo = 'form[action="collegati.asp?pos=gilda"]';
+      var nomeprova = $(modulo).attr('action');
+      var nomelink = 'https://www.extremelot.eu/proc/'+nomeprova; 
+      var esito = "#dlg-vediOnline";
+      $.post( nomelink, $(modulo).serialize()).done(function(data) { $(esito).html(data); } ); 
+    })
+    .on('submit','#dlg-vediOnline form[action="collegati.asp?pos=clans"]',function(e) {  e.preventDefault(); 
+        var modulo = 'form[action="collegati.asp?pos=clans"]';
+        var nomeprova = $(modulo).attr('action');
+        var nomelink = 'https://www.extremelot.eu/proc/'+nomeprova; 
+        var esito = "#dlg-vediOnline";
+        $.post( nomelink, $(modulo).serialize()).done(function(data) { $(esito).html(data); } ); 
+      })
+      .on('submit','#dlg-vediOnline form[action="collegati.asp?pos=area"]',function(e) {  e.preventDefault(); 
+        var modulo = 'form[action="collegati.asp?pos=area"]';
+        var nomeprova = $(modulo).attr('action');
+        var nomelink = 'https://www.extremelot.eu/proc/'+nomeprova; 
+        var esito = "#dlg-vediOnline";
+        $.post( nomelink, $(modulo).serialize()).done(function(data) { $(esito).html(data); } ); 
+      })
+      .on('submit','#dlg-vediOnline form[action="collegati.asp?pos=razze"]',function(e) {  e.preventDefault(); 
+        var modulo = 'form[action="collegati.asp?pos=razze"]';
+        var nomeprova = $(modulo).attr('action');
+        var nomelink = 'https://www.extremelot.eu/proc/'+nomeprova; 
+        var esito = "#dlg-vediOnline";
+        $.post( nomelink, $(modulo).serialize()).done(function(data) { $(esito).html(data); } ); 
+      })
+      .on('submit','#dlg-vediOnline form[action="chiedove.asp"]',function(e) {  e.preventDefault(); 
+        finestra('doveGioco','Dove vuoi giocare?','https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/chiedove.asp','width=950,height=550'); 
+      })
+      .on('click','#dlg-vediOnline a[href^="javascript:dettagli"], #dlg-simboliLot  a[href^="javascript:dettagli"]',function(e) { e.preventDefault(); var pagina = $(this).attr('href'); pagina = 
+        pagina.replace("javascript:dettagli('", ""); pagina = pagina.replace("');", ""); vedischeda(''+pagina+''); })
+
+      .on('click','#dlg-vediOnline a[href^="javascript:posta"], #dlg-simboliLot  a[href^="javascript:posta"]',function(e) { e.preventDefault(); var pagina = $(this).attr('href'); pagina = 
+        pagina.replace("javascript:posta('", ""); pagina = pagina.replace("');", ""); scriviposta(''+pagina+''); })
+      
     // apri editor
     .on("click", "#apri_editor", function() { apriEditor(); })
     // bacheca
