@@ -40,7 +40,6 @@ function debugLog(...args) {
 function setupPlugin() {	 
 		var scelte = 
 					"<div class='scelta' id='scelta_1'></div>"+
-					/*"<div class='scelta' id='scelta_2'></div>"+*/
 					"<div class='scelta' id='scelta_3'></div>"+
 					"<div class='scelta' id='scelta_4'></div>"+
 					"<div class='scelta' id='scelta_5'></div>"+
@@ -54,17 +53,16 @@ function setupPlugin() {
 					"<div class='comando' id='lente' title='Vedi la descrizione del luogo'><img src='http://www.extremelot.eu/proc/img/_descr.gif' /></div>"+  
 					"<div class='comando' id='dovegioco' title='Dove vuoi giocare oggi?'><i class='fa fa-hourglass'></i></div>"+
 					"<div class='comando' id='apriazioncine' title='Apri Azioni'><i class='fa fa-diamond'></i></div>"+
-					          //"<div class='comando' id='mapparapida' title='Mappa Rapida'><i class='fa fa-map-signs'></i></div>"+
+					"<div class='comando' id='mappaTest' title='Mappa Testuale'><i class='fa fa-map'></i></div>"+
 					"<div class='comando' id='miascheda' title='Apri Scheda'><i class='fa fa-id-badge'></i></div>"+
 					"<div class='comando' id='scelto_forum' title='Apri Bacheche'><i class='fa fa-clipboard'></i></div>"+
 					"<div class='comando' id='apri_online' title='Elenco online'><i class='fa fa-users'></i></div>"+ 
 					"<div class='comando' id='leggiposta' title='Posta'><i class='fa fa-envelope'></i></div>"+
 					"<div class='comando' id='regole' title='Apri il regolamento'><i class='fa fa-book'></i></div>"+
 					"<div class='comando' id='scriviposta' title='Scrivi Missiva'><i class='fa fa-pencil'></i></div>"+
-                    //"<div class='comando' id='cartografia' title='Cartografia di Lot'><i class='fa fa-image'></i></div>"+
 					"<div class='comando' id='banca' title='Banca di Lot'><i class='fa fa-money'></i></div>"+
 					"<div class='comando' id='apri_editor' title='Campo testo per azioni'><i class='fa fa-commenting'></i></div>"+
-          "<div class='comando' id='gest_Chat' title='Gestionale'><i class='fa fa-map'></i></div>";
+          "<div class='comando' id='gest_Chat' title='Gestionale'><i class='fa fa-bookmark'></i></div>";
 		
 
 
@@ -231,13 +229,37 @@ function setupEventiPlugin() {
   debugLog("[DEBUG] Avvio setupEventiPlugin()");
 
   $(document)
-    // Cartografia
-    .on("click", "#cartografia", function() {
-      finestra("Cartografia","Cartografia Lot",
-        "https://extremeplug.altervista.org/docs/plugin/altri.php?link=http://cartografiaextremelot.altervista.org/index.html",
-        "width=90%,height=550"
-      );
-      $("#dlg-Cartografia").dialog({ autoOpen: false });
+    .on("click", "#mappaTest", function() {
+        // Rimuove eventuale div precedente
+        $('#mappaDiv').remove();
+
+        // Crea div modale
+        let contenitore = $("<div id='mappaDiv'></div>").appendTo('body');
+
+        // Inserisce iframe con la mappa
+        let iframe = $('<iframe>', {
+            src: "https://ordinedelleguide.altervista.org/mappa/index.php",
+            width: "100%",
+            height: "100%",
+            frameborder: 0
+        });
+        contenitore.append(iframe);
+
+        // Trasforma in dialog jQuery UI
+        contenitore.dialog({
+            title: 'Mappa',
+            resizable: true,
+            draggable: true,
+            position: { my: "center", at: "center", of: window },
+            minHeight: 400,
+            minWidth: 600,
+            height: 700,
+            width: 1000,
+            modal: false,
+            close: function(event, ui) {
+                $(this).dialog("destroy").remove();
+            }
+        });
     })
     // Banca
     .on("click", "#banca", function() {
@@ -339,13 +361,6 @@ function setupEventiPlugin() {
       finestra("doveGioco","Dove vuoi giocare?",
         "https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/proc/chiedove.asp",
         "width=950,height=550"
-      );
-    })
-    // mappa rapida
-    .on("click", "#mapparapida", function() {
-      finestra("mapparapida","Mappa Rapida",
-        "https://extremeplug.altervista.org/docs/plugin/mapparapida.php",
-        "width=700,height=500"
       );
     })
     // simboli
