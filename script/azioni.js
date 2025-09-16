@@ -305,10 +305,17 @@ function setupEventiPlugin() {
           e.preventDefault();
           var esito = "#dlg-vediOnline";
           var nomelink = "https://ordinedelleguide.altervista.org/mappa/index.php";
-          
-          // carica il contenuto nel div
-          $(esito).load(nomelink);
+
+          $(esito).html('<iframe src="' + nomelink + '" width="100%" height="550" frameborder="0"></iframe>');
       })
+      .on("click", "#dlg-vediOnline a[href='../lotnew/leggi/primipassi']", function(e) {
+          e.preventDefault();
+          var esito = "#dlg-vediOnline";
+          var nomelink = "https://www.extremelot.eu/lotnew/leggi/primipassi/";
+
+          $(esito).html('<iframe src="' + nomelink + '" width="100%" height="550" frameborder="0"></iframe>');
+      })
+
       // intercetta i link a chiedove.asp
       .on("click", "#dlg-vediOnline a[href='chiedove.asp']", function(e) {
           e.preventDefault();
