@@ -55,6 +55,7 @@ function setupPlugin() {
 					"<div class='comando' id='apriazioncine' title='Apri Azioni'><i class='fa fa-diamond'></i></div>"+
 					"<div class='comando' id='mappaTest' title='Mappa Testuale'><i class='fa fa-map'></i></div>"+
 					"<div class='comando' id='miascheda' title='Apri Scheda'><i class='fa fa-id-badge'></i></div>"+
+          "<div class='comando' id='lotInforma' title='Lot Informa'><i class='fa fa-info-circle'></i></div>"+
 					"<div class='comando' id='scelto_forum' title='Apri Bacheche'><i class='fa fa-clipboard'></i></div>"+
 					"<div class='comando' id='apri_online' title='Elenco online'><i class='fa fa-users'></i></div>"+ 
 					"<div class='comando' id='leggiposta' title='Posta'><i class='fa fa-envelope'></i></div>"+
@@ -263,10 +264,7 @@ function setupEventiPlugin() {
     })
     // Banca
     .on("click", "#banca", function() {
-      finestra("Banca","Banca di Lot",
-        "https://extremeplug.altervista.org/docs/plugin/altri.php?link=https://www.extremelot.eu/lotnew/banca_d.asp",
-        "width=90%,height=550"
-      );
+        apriBancaDiretta();
     })
     // Missiva
     .on("click", "#scriviposta, [myid='scriviposta']", function() { scriviposta(); })
@@ -352,6 +350,7 @@ function setupEventiPlugin() {
 
     // apri editor
     .on("click", "#apri_editor", function() { apriEditor(); })
+    .on("click", "#lotInforma", function(){ apriLotInforma(); })
     // bacheca
     .on("click", "#scelto_forum", function() { bacheca($("#imieiforumx").val()); })
     // salva chat
@@ -401,6 +400,49 @@ function inizializzaPlugin() {
 
   setupEventiPlugin();
   debugLog("[DEBUG] Plugin pronto.");
+}
+
+/************************************************/
+/*                  LOTINFORMA                    */
+/************************************************/
+function apriLotInforma() {
+    const dlgId = "dlg-LotInforma";
+    let dlg = $("#" + dlgId);
+
+    // Se il dialog esiste ed è aperto, chiudilo
+    if (dlg.length && dlg.dialog("isOpen")) {
+        dlg.dialog("close");
+        return;
+    }
+
+    // Se non esiste, crealo
+    if (!dlg.length) {
+        dlg = $("<div>", { id: dlgId }).appendTo('body');
+
+        // Inserisco iframe con il link fornito
+        const iframe = $('<iframe>', {
+            src: "https://www.extremelot.eu/proc/forum/forum.asp?codforum=14",
+            width: "100%",
+            height: "100%",
+            frameborder: 0
+        });
+        dlg.append(iframe);
+
+        // Trasforma in dialog jQuery UI
+        dlg.dialog({
+            title: "Lot Informa",
+            resizable: true,
+            draggable: true,
+            position: { my: "center", at: "center", of: window },
+            minHeight: 400,
+            minWidth: 600,
+            height: 550,
+            width: 1050,
+            close: function() { $(this).dialog("destroy").remove(); }
+        });
+    } else {
+        dlg.dialog("open");
+    }
 }
 
 
@@ -607,43 +649,69 @@ $(document).ready(function() {
 /************************************************/
 /*                   BACHECA                    */
 /************************************************/
-
-
-
 function bacheca(id) { 
-//if ( $("#dlg-VediBacheca_b1").dialog("isOpen")) { $("#dlg-VediBacheca_b1").remove(); }  
-var url = "https://www.extremelot.eu/proc/forum/forum.asp?codforum=225";
-if (!id) { var id = 'b1'; } 
-if (id == 'b1') { var url = "https://www.extremelot.eu/proc/forum/bacheca.asp";  var nomebacheca = "Ducale"; } 
-else if (id == 'b2') { var url = "https://www.extremelot.eu/proc/forum/forumel.asp?cod=120"; var nomebacheca = "Fato";  }
-else {  var nomebacheca = $('#imieiforumx option:selected').text(); var url = "https://www.extremelot.eu/proc/forum/forum.asp?codforum="+id;  }
-finestra('VediBacheca_'+id,'Bacheca '+nomebacheca,'https://extremeplug.altervista.org/docs/plugin/bacheche.php?link='+url,'width=1050,height=550');
+    var url, nomebacheca;
+    if (!id) { id = 'b1'; }
 
- // Setto il tempo massimo di apertura del dialog a 10 minuti
-      setTimeout(function(){
-        $("#dlg-VediBacheca_b1").remove();
-     }, 600000);
-	 
-//------------ verifichiamo che il dialog sia aperto e non apriamone un secondo --------
-$(document).ready(function() {
-         var dialogOptions = {
-        autoOpen: false
-      };
-      $("#dlg-VediBacheca_b1").dialog(dialogOptions);
+    if (id === 'b1') { 
+        url = "https://www.extremelot.eu/proc/forum/bacheca.asp";  
+        nomebacheca = "Ducale"; 
+    } else if (id === 'b2') { 
+        url = "https://www.extremelot.eu/proc/forum/forumel.asp?cod=120"; 
+        nomebacheca = "Fato";  
+    } else {  
+        nomebacheca = $('#imieiforumx option:selected').text(); 
+        url = "https://www.extremelot.eu/proc/forum/forum.asp?codforum=" + id;  
+    }
 
-      $("#scelto_forum").click(function() {
-        if(!$("#dlg-VediBacheca_b1").dialog("isOpen")) {
-          $("#dlg-VediBacheca_b1").dialog("open");
-        } else {
-          $("#dlg-VediBacheca_b1").dialog("close");
+    // Rimuovo div esistente
+    $("#dlg-VediBacheca_" + id).remove();
+
+    // Creo nuovo div
+    var contenitore = $("<div id='dlg-VediBacheca_" + id + "'></div>").appendTo('body');
+
+    // Inserisco iframe della bacheca principale
+    var iframe = $('<iframe>', {
+        src: url,
+        width: "100%",
+        height: "100%",
+        frameborder: 0
+    });
+    contenitore.append(iframe);
+
+    // Trasforma in dialog
+    contenitore.dialog({
+        title: 'Bacheca ' + nomebacheca,
+        resizable: true,
+        draggable: true,
+        position: { my: "center", at: "center", of: window },
+        minHeight: 400,
+        minWidth: 600,
+        height: 550,
+        width: 1050,
+        cache: false,
+        close: function(event, ui) {
+            $(this).dialog("destroy").remove();
         }
-      });
+    });
 
-      });   
-//-----------------------
+    // Toggle pulsante
+    $(document).ready(function() {
+        var dialogOptions = { autoOpen: false };
+        $("#dlg-VediBacheca_" + id).dialog(dialogOptions);
+
+        $("#scelto_forum").off("click").on("click", function() {
+            const dlg = $("#dlg-VediBacheca_" + id);
+            if (dlg.length && dlg.dialog("isOpen")) {
+                dlg.dialog("close");
+            } else {
+                bacheca(id); // ricrea se non esiste
+            }
+        });
+    });
+}
 
 
-} 
 /************************************************/
 /*                    AZIONI                    */
 /************************************************/
@@ -763,6 +831,43 @@ function apriGestionale() {
         }
     });
 }
+
+
+// Apertura finestra Banca senza proxy
+function apriBancaDiretta() {
+    // rimuovi eventuale finestra aperta
+    $("#dlg-Banca").remove();
+
+    // contenitore
+    let contenitore = $("<div id='dlg-Banca'></div>").appendTo('body');
+
+    // iframe con la banca
+    let iframe = $('<iframe>', {
+        src: "https://www.extremelot.eu/lotnew/banca_d.asp",
+        width: "100%",
+        height: "100%",
+        frameborder: 0
+    });
+
+    contenitore.append(iframe);
+
+    // dialog jQuery UI
+    contenitore.dialog({
+        title: "Banca di Lot",
+        resizable: true,
+        draggable: true,
+        position: { my: "center", at: "center", of: window },
+        minHeight: 400,
+        minWidth: 600,
+        height: 550,
+        width: 950,
+        modal: false,
+        close: function(event, ui) {
+            $(this).dialog("destroy").remove();
+        }
+    });
+}
+
 
 /* e dopo tanto lavoro..carichiamo sto plugin all'avvio*/
 $(function(){  
