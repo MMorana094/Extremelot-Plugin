@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -28,10 +31,14 @@ jobs:
       - name: Check key.pem
         run: ls -la key.pem
 
+      - name: List root files
+        run: ls -la
+
+
       - name: Build .crx package
         run: |
           mkdir -p dist
-          crx3 --key=key.pem --crx=dist/plugin.crx ../..
+          crx3 --key=key.pem --crx=dist/plugin.crx .
 
       - name: Upload CRX artifact
         uses: actions/upload-artifact@v4
