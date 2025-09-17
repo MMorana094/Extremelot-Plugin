@@ -36,7 +36,7 @@ jobs:
       - name: Prepare extension folder
         run: |
           mkdir ext
-          cp manifest.json background.js background.html dialog.html -r script stili ext/
+          cp manifest.json background.js background.html dialog.html 16.png 32.png 64.png 128.jpg -r script stili ext/
 
       - name: Build .crx package
         run: |
