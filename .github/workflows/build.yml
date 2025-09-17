@@ -31,7 +31,7 @@ jobs:
           crx3 --key=key.pem --crx=dist/plugin.crx .
 
       - name: Upload CRX artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: chrome-extension
           path: dist/plugin.crx
