@@ -34,12 +34,6 @@ jobs:
       - name: List root files
         run: ls -la
 
-
-      - name: Build .crx package
-        run: |
-          mkdir -p dist
-          crx3 --key=key.pem --crx=dist/plugin.crx .
-
       - name: Prepare extension folder
         run: |
           mkdir ext
