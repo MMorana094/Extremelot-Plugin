@@ -15,7 +15,6 @@ jobs:
         with:
           fetch-depth: 0
 
-
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -43,3 +42,9 @@ jobs:
         run: |
           mkdir -p dist
           crx3 --key=key.pem --crx=dist/plugin.crx ext
+
+      - name: Upload CRX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: dist/plugin.crx
