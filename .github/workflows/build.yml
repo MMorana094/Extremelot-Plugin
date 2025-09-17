@@ -23,7 +23,10 @@ jobs:
 
       - name: Restore key.pem from secret
         run: |
-          echo "${{ secrets.CRX_KEY }}" | base64 -d > key.pem
+          echo "${{ secrets.EXT_KEY_PEM_B64 }}" | base64 -d > key.pem
+      
+      - name: Check key.pem
+        run: ls -la key.pem
 
       - name: Build .crx package
         run: |
@@ -35,3 +38,4 @@ jobs:
         with:
           name: chrome-extension
           path: dist/plugin.crx
+
