@@ -40,9 +40,9 @@ jobs:
           mkdir -p dist
           crx3 --key=key.pem --crx=dist/plugin.crx .
 
-      - name: Upload CRX artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: chrome-extension
-          path: dist/plugin.crx
+      - name: Build .crx package
+        run: |
+          mkdir -p dist
+          crx3 --key=key.pem --crx=dist/plugin.crx manifest.json background.js background.html dialog.html script stili
+
 
