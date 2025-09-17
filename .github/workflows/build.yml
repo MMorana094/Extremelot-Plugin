@@ -1,0 +1,37 @@
+name: Build Chrome Extension CRX
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # ti permette di avviarlo anche a mano
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install crx3 tool
+        run: npm install -g crx3
+
+      - name: Restore key.pem from secret
+        run: |
+          echo "${{ secrets.CRX_KEY }}" | base64 -d > key.pem
+
+      - name: Build .crx package
+        run: |
+          mkdir -p dist
+          crx3 --key=key.pem --crx=dist/plugin.crx .
+
+      - name: Upload CRX artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: chrome-extension
+          path: dist/plugin.crx
