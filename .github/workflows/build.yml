@@ -40,9 +40,12 @@ jobs:
           mkdir -p dist
           crx3 --key=key.pem --crx=dist/plugin.crx .
 
+      - name: Prepare extension folder
+        run: |
+          mkdir ext
+          cp manifest.json background.js background.html dialog.html -r script stili ext/
+
       - name: Build .crx package
         run: |
           mkdir -p dist
-          crx3 --key=key.pem --crx=dist/plugin.crx manifest.json background.js background.html dialog.html script stili
-
-
+          crx3 --key=key.pem --crx=dist/plugin.crx ext
