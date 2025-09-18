@@ -1,0 +1,28 @@
+name: Build Zip
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Crea archivio zip (senza .github e roba extra)
+        run: |
+          zip -r extremelot-plugin.zip . \
+            -x "*.git*" \
+            -x ".github/*" \
+            -x "README.md" \
+            -x "LICENSE" \
+            -x "*.yml"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extremelot-plugin
+          path: extremelot-plugin.zip
