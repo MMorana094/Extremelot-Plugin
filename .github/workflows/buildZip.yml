@@ -14,15 +14,17 @@ jobs:
 
       - name: Crea archivio zip (senza .github e roba extra)
         run: |
-          zip -r extremeplug.zip . \
-            -x "*.git*" \
-            -x ".github/*" \
-            -x "README.md" \
-            -x "LICENSE" \
-            -x "*.yml"
-
+          # Crea una cartella temporanea con solo i file che vogliamo
+          mkdir -p temp_build
+          cp -r script temp_build/ 2>/dev/null || true
+          cp -r stili temp_build/ 2>/dev/null || true
+          cp *.jpg temp_build/ 2>/dev/null || true
+          cp *.png temp_build/ 2>/dev/null || true
+          cp *.html temp_build/ 2>/dev/null || true
+          cp *.js temp_build/ 2>/dev/null || true
+          cp manifest.json temp_build/ 2>/dev/null || true
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: extremeplug
-          path: extremeplug.zip
+          path: temp_build/
