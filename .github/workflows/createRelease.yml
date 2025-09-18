@@ -10,7 +10,7 @@ jobs:
       - name: Scarica artifact da workflow build-zip
         uses: actions/download-artifact@v4
         with:
-          name: extremelot-plugin
+          name: extremeplug
           path: ./dist
 
       - name: Crea Release
@@ -21,6 +21,6 @@ jobs:
           body: "Nuova release automatica del plugin."
           draft: false
           prerelease: false
-          files: ./dist/extremelot-plugin.zip
+          files: ./dist/extremeplug.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
