@@ -1,8 +1,6 @@
 name: Build Chrome Extension CRX
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch: # ti permette di avviarlo anche a mano
 
 jobs:
