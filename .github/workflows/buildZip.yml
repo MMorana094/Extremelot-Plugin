@@ -14,7 +14,7 @@ jobs:
 
       - name: Crea archivio zip (senza .github e roba extra)
         run: |
-          zip -r extremelot-plugin.zip . \
+          zip -r extremeplug.zip . \
             -x "*.git*" \
             -x ".github/*" \
             -x "README.md" \
@@ -24,5 +24,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: extremelot-plugin
-          path: extremelot-plugin.zip
+          name: extremeplug
+          path: extremeplug.zip
