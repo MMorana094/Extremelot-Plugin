@@ -264,7 +264,7 @@ function setupEventiPlugin() {
     })
     // Banca
     .on("click", "#banca", function() {
-        apriBancaDiretta();
+        apriBanca();
     })
     // Missiva
     .on("click", "#scriviposta, [myid='scriviposta']", function() { scriviposta(); })
@@ -364,10 +364,7 @@ function setupEventiPlugin() {
     })
     // simboli
     .on("click", "#aprisimboli, #scelta_5", function() {
-      finestra("simboliLot","Simboli e statuti",
-        "https://www.extremelot.eu/lotnew/simboli.asp",
-        "width=950,height=550"
-      );
+        apriSimboli();
     })
     // descrizione luogo
     .on("click", "#lente", function() {
@@ -833,8 +830,8 @@ function apriGestionale() {
 }
 
 
-// Apertura finestra Banca senza proxy
-function apriBancaDiretta() {
+// Apertura finestra Banca
+function apriBanca() {
     // rimuovi eventuale finestra aperta
     $("#dlg-Banca").remove();
 
@@ -867,6 +864,41 @@ function apriBancaDiretta() {
         }
     });
 }
+
+function apriSimboli() {
+    // rimuovi eventuale finestra aperta
+    $("#dlg-Simboli").remove();
+
+    // contenitore
+    let contenitore = $("<div id='dlg-Simboli'></div>").appendTo('body');
+
+    // iframe con i simboli
+    let iframe = $('<iframe>', {
+        src: "https://www.extremelot.eu/lotnew/simboli.asp",
+        width: "100%",
+        height: "100%",
+        frameborder: 0
+    });
+
+    contenitore.append(iframe);
+
+    // dialog jQuery UI
+    contenitore.dialog({
+        title: "Simboli e Statuti",
+        resizable: true,
+        draggable: true,
+        position: { my: "center", at: "center", of: window },
+        minHeight: 400,
+        minWidth: 600,
+        height: 550,
+        width: 950,
+        modal: false,
+        close: function(event, ui) {
+            $(this).dialog("destroy").remove();
+        }
+    });
+}
+
 
 
 /* e dopo tanto lavoro..carichiamo sto plugin all'avvio*/
