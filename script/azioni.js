@@ -299,6 +299,49 @@ function setupEventiPlugin() {
         var esito = "#dlg-vediOnline";
         $.post( nomelink, $(modulo).serialize()).done(function(data) { $(esito).html(data); } ); 
       })
+            .on("click", "#dlg-vediOnline a[href^='javascript:dettagli'], #dlg-vediOnline [onclick*=\"dettagli('\"]", function(e) {
+        e.preventDefault();
+        const href = $(this).attr('href') || $(this).attr('onclick') || "";
+        const match = href.match(/dettagli\s*\(\s*'([^']+)'\s*\)/i);
+        
+        if (!match) {
+          debugLog("[DEBUG] Clic su icona PG ma non trovato parametro in:", href);
+          return;
+        }
+
+        const nomePG = match[1];
+        const url = "https://www.extremelot.eu/proc/schedaPG/scheda.asp?ID=" + encodeURIComponent(nomePG);
+        
+        debugLog("[DEBUG] Apertura scheda per PG:", nomePG);
+        debugLog("[DEBUG] URL generato:", url);
+
+        // Carica in un iframe
+        $("#dlg-vediOnline").html(
+          '<iframe src="' + url + '" style="width:100%; height:500px; border:none;"></iframe>'
+        );
+      })
+
+
+      // intercetta elementi con onclick="dettagli('..')" o onclick="posta('..')"
+      .on("click", "#dlg-vediOnline [onclick*='dettagli('], #dlg-vediOnline [onclick*='posta(']", function(e) {
+        // trova il testo dell'onclick (può essere sull'anchor o sull'immagine)
+        const js = ($(this).attr('onclick') || $(this).closest('a').attr('onclick') || "");
+        const m = js.match(/(dettagli|posta)\s*\(\s*'([^']+)'\s*\)/i);
+        if (!m) return;
+        e.preventDefault();
+
+        const fn = m[1].toLowerCase();
+        const name = m[2];
+
+        if (fn === 'dettagli') {
+          const url = 'https://www.extremelot.eu/proc/schedaPG/scheda.asp?ID=' + encodeURIComponent(name);
+          $.get(url).done(data => $("#dlg-vediOnline").html(data)).fail(() => window.open(url, '_blank'));
+        } else {
+          const url = 'https://www.extremelot.eu/proc/posta/scrivialtri.asp?id=' + encodeURIComponent(name);
+          $.get(url).done(data => $("#dlg-vediOnline").html(data)).fail(() => window.open(url, '_blank'));
+        }
+      })
+      
       .on('submit','#dlg-vediOnline form[action="collegati.asp?pos=razze"]',function(e) {  e.preventDefault(); 
         var modulo = 'form[action="collegati.asp?pos=razze"]';
         var nomeprova = $(modulo).attr('action');
