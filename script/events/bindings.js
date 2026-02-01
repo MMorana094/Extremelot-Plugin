@@ -38,7 +38,12 @@
           return () => w.vedischeda?.();
 
         case "salva_chat":
-          return () => w.salvaChat?.();
+          return () => {
+            debugLog("[BIND] click salva_chat");
+            const run = w.ExtremePlug?.features?.salvaChat?.run;
+            if (typeof run === "function") return run();
+            return w.salvaChat?.(); // fallback legacy
+          };
 
         case "scelto_forum":
           return () => {
@@ -47,12 +52,14 @@
           };
 
         case "leggiposta":
-          return () => w.ExtremePlug?.features?.leggiposta?.leggiposta?.();
+          return () => {
+            debugLog("[BIND] click leggiposta");
+            w.ExtremePlug?.features?.leggiposta?.open?.();
+          };
 
         case "scriviposta":
           return () => w.scriviposta?.();
 
-        // ✅ GESTIONALE (nuovo overlay) + fallback vecchia funzione
         case "gest_Chat":
           return () => {
             debugLog("[BIND] click gestionale (gest_Chat)");
@@ -100,7 +107,6 @@
             w.ExtremePlug?.features?.azioniFinestra?.open?.();
           };
 
-        // ✅ LENTE
         case "descLuogo":
           return () => {
             debugLog("[BIND] click descLuogo");
