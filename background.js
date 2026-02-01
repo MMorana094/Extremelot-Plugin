@@ -4,25 +4,32 @@ chrome.runtime.onInstalled.addListener(function (details) {
 
     if (details.reason === "install") {
       console.info("First version installed");
-    } else if (details.reason === "update") {
+      return;
+    }
+
+    if (details.reason === "update") {
       console.info("Updated version: " + thisVersion);
 
-      chrome.tabs.query({ currentWindow: true, active: true }, function (tabs) {
-        tabs.forEach(tab => {
-          if (tab.url && tab.url.includes("extremelot.eu/lotnew/_index2.htm")) {
+      chrome.tabs.query(
+        { url: "https://www.extremelot.eu/lotnew/_index2.asp" },
+        function (tabs) {
+          if (!tabs || tabs.length === 0) {
+            console.warn("Nessuna tab LOT aperta al momento dell'update");
+            return;
+          }
+
+          tabs.forEach((tab) => {
             chrome.tabs.sendMessage(tab.id, {
               name: "showPopupOnUpdated",
               version: thisVersion
-            }, function (response) {
+            }, function () {
               if (chrome.runtime.lastError) {
                 console.warn("Nessun content script in ascolto:", chrome.runtime.lastError.message);
               }
             });
-          } else {
-            console.warn("Tab attiva non valida per l'estensione:", tab.url);
-          }
-        });
-      });
+          });
+        }
+      );
     }
   } catch (e) {
     console.error("OnInstall Error:", e);

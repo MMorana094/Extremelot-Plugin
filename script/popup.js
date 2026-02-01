@@ -1,11 +1,25 @@
-const checkbox = document.getElementById("debugToggle");
+// script/popup.js
+(function () {
+  const checkbox = document.getElementById("debugToggle");
+  if (!checkbox) return;
 
-// Carica stato salvato
-chrome.storage.local.get("DEBUG_MODE", (data) => {
-  checkbox.checked = Boolean(data.DEBUG_MODE);
-});
+  function setChecked(v) {
+    checkbox.checked = !!v;
+  }
 
-// Salva stato quando cambi
-checkbox.addEventListener("change", () => {
-  chrome.storage.local.set({ DEBUG_MODE: checkbox.checked });
-});
+  try {
+    chrome.storage.local.get("DEBUG_MODE", (data) => {
+      setChecked(data && data.DEBUG_MODE);
+    });
+
+    checkbox.addEventListener("change", () => {
+      chrome.storage.local.set({ DEBUG_MODE: checkbox.checked });
+    });
+
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes && changes.DEBUG_MODE) setChecked(changes.DEBUG_MODE.newValue);
+    });
+  } catch (e) {
+    console.warn("popup debug toggle error:", e);
+  }
+})();
