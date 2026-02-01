@@ -15,7 +15,7 @@
   const VIEWER_H = 600;
 
   // =========================
-  // UI host: frame "result" (nel tuo caso = mappacitta.asp)
+  // UI host: frame "result"
   // =========================
   function getUiDoc() {
     try {
@@ -97,7 +97,7 @@
       .ui-widget-overlay{ z-index: 9999998 !important; }
 
       /* =========================
-         VIEWER (Scheda PG) - stile "Scheda Dastian"
+         VIEWER (Scheda PG)
          ========================= */
 
       /* Dialog cornice generale */
@@ -216,16 +216,13 @@
       }
 
       /* =========================
-         CLOSE (viewer): togli testo e mostra una X SEMPRE visibile
+         CLOSE (viewer):
          ========================= */
-
-      /* nascondi testo "Close" se presente */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar-close .ui-button-text,
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar-close .ui-dialog-titlebar-close-text{
         display:none !important;
       }
 
-      /* spostato nella barra controlli: niente absolute */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar-close{
         position: static !important;
         right: auto !important;
@@ -245,12 +242,10 @@
         background: rgba(255,255,255,.10) !important;
       }
 
-      /* NON fidarti dell'icona jQuery UI: la nascondiamo */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar-close .ui-icon{
         display:none !important;
       }
 
-      /* Disegniamo noi la X */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar-close::before{
         content: "✕";
         color: #fff;
@@ -265,7 +260,6 @@
 
       /* =========================
          DIALOG BASE (SI/NO – CERCA)
-         niente pulsante close
          ========================= */
       .ui-dialog.ep-noclose .ui-dialog-titlebar-close{
         display: none !important;
@@ -289,7 +283,7 @@
   }
 
   // =========================
-  // PG name: altrove (logo)
+  // PG name: (frame:logo)
   // =========================
   function getOwnPgName() {
     const n1 = w.ExtremePlug?.pg?.getName?.();
