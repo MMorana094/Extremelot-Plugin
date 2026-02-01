@@ -1,5 +1,6 @@
 // /script/features/bacheca.js
 // SRP: aprire e gestire SOLO il frame/overlay della Bacheca
+// Dipende da: /script/ui/overlay.js (Overlay Factory)
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -7,298 +8,39 @@
 
   const debugLog = w.ExtremePlug?.debug?.debugLog || function () {};
 
-  const URL = "https://www.extremelot.eu/proc/forum/bacheca.asp";
-  const TITLE = "Bacheca";
-
-  const WRAP_ID = "ep-bacheca-wrap";
-  const IFRAME_ID = "ep-bacheca-iframe";
-  const BAR_ID = "ep-bacheca-bar";
-  const SLIDER_ID = "ep-bacheca-opacity";
-  const BTN_MIN_ID = "ep-bacheca-min";
-  const BTN_CLOSE_ID = "ep-bacheca-close";
-  const RESIZE_ID = "ep-bacheca-resize";
-
-  // Dimensione iniziale
-  const DEFAULT_W = 820;
-  const DEFAULT_H = 520;
-
-  // Limiti
-  const MIN_W = 380;
-  const MIN_H = 160;
-
-  // Margini + snap
-  const EDGE_PAD = 10;
-  const SNAP_PX = 18;
-
-  function getTargetDocument() {
-    const cached = w.ExtremePlug?.menu?._lastTargetDoc;
-    if (cached?.body) return cached;
-
-    const resultWin = w.top?.result;
-    if (resultWin?.document?.body) return resultWin.document;
-
-    if (w.document?.body) return w.document;
-    return null;
+  const factory = w.ExtremePlug?.ui?.overlay?.createOverlay;
+  if (typeof factory !== "function") {
+    debugLog("[bacheca] overlay factory mancante: carica /script/ui/overlay.js prima di questo file");
+    w.ExtremePlug.features.bacheca = { open: function () {} };
+    return;
   }
 
-  function removeIfExists(doc) {
-    try {
-      const old = doc.getElementById(WRAP_ID);
-      if (old) old.remove();
-    } catch (_) {}
-  }
-
-  function clamp(n, min, max) {
-    n = Number(n);
-    if (!isFinite(n)) return min;
-    if (n < min) return min;
-    if (n > max) return max;
-    return n;
-  }
-
-  function pxToNum(v, fallback) {
-    const n = parseInt(String(v || ""), 10);
-    return isFinite(n) ? n : fallback;
-  }
-
-  function snapToEdge(value, edgeValue, snapPx) {
-    return Math.abs(value - edgeValue) <= snapPx ? edgeValue : value;
-  }
-
-  function open() {
-    const doc = getTargetDocument();
-    const win = doc?.defaultView || w;
-
-    debugLog("[bacheca] open()", { hasBody: !!doc?.body });
-    if (!doc?.body) return;
-
-    // toggle
-    const existing = doc.getElementById(WRAP_ID);
-    if (existing) {
-      existing.remove();
-      debugLog("[bacheca] chiusa (toggle)");
-      return;
+  const overlay = factory({
+    id: "ep-bacheca-wrap",
+    url: "https://www.extremelot.eu/proc/forum/bacheca.asp",
+    title: "Bacheca",
+    ids: {
+      iframe: "ep-bacheca-iframe",
+      bar: "ep-bacheca-bar",
+      slider: "ep-bacheca-opacity",
+      btnMin: "ep-bacheca-min",
+      btnClose: "ep-bacheca-close",
+      resizer: "ep-bacheca-resize"
+    },
+    size: { w: 820, h: 520, minW: 380, minH: 160 },
+    snap: { edgePad: 10, snapPx: 18 },
+    theme: {
+      wrapBorder: "1px solid rgba(0,0,0,0.35)",
+      barBg: "#6e0000",
+      barBorderBottom: "1px solid rgba(0,0,0,0.12)",
+      barTextColor: "#FFFFFF",
+      titleColor: "#FFFFFF"
+    },
+    minimize: { w: 420, h: 34, right: 12, bottom: 12 },
+    onAfterMount: function () {
+      debugLog("[bacheca] frame pronto (top-mounted, factory)");
     }
+  });
 
-    /* ================= WRAPPER ================= */
-    const wrap = doc.createElement("div");
-    wrap.id = WRAP_ID;
-    wrap.style.position = "fixed";
-    wrap.style.zIndex = "2147483647";
-    wrap.style.background = "#fff";
-    wrap.style.border = "1px solid rgba(0,0,0,0.35)";
-    wrap.style.boxShadow = "0 10px 40px rgba(0,0,0,0.35)";
-    wrap.style.borderRadius = "8px";
-    wrap.style.overflow = "hidden";
-    wrap.style.opacity = "1";
-    wrap.dataset.minimized = "0";
-
-    const vw = win.innerWidth || 1200;
-    const vh = win.innerHeight || 800;
-
-    const w0 = clamp(DEFAULT_W, MIN_W, vw - 2 * EDGE_PAD);
-    const h0 = clamp(DEFAULT_H, MIN_H, vh - 2 * EDGE_PAD);
-
-    const left0 = clamp(Math.round((vw - w0) / 2), EDGE_PAD, vw - w0 - EDGE_PAD);
-    const top0 = clamp(Math.round((vh - h0) / 2), EDGE_PAD, vh - h0 - EDGE_PAD);
-
-    wrap.style.left = left0 + "px";
-    wrap.style.top = top0 + "px";
-    wrap.style.width = w0 + "px";
-    wrap.style.height = h0 + "px";
-
-    // stato per restore
-    wrap.dataset.openLeft = wrap.style.left;
-    wrap.dataset.openTop = wrap.style.top;
-    wrap.dataset.openW = wrap.style.width;
-    wrap.dataset.openH = wrap.style.height;
-
-    /* ================= TITLE BAR ================= */
-    const bar = doc.createElement("div");
-    bar.id = BAR_ID;
-    bar.style.height = "34px";
-    bar.style.display = "flex";
-    bar.style.alignItems = "center";
-    bar.style.justifyContent = "space-between";
-    bar.style.padding = "0 10px";
-    bar.style.background = "#6e0000";
-    bar.style.borderBottom = "1px solid #fff";
-    bar.style.font = "13px Arial";
-    bar.style.userSelect = "none";
-    bar.style.cursor = "move";
-
-    const title = doc.createElement("div");
-    title.textContent = TITLE;
-    title.style.color = "#FFFFFF";
-    title.style.fontWeight = "700";
-    title.style.whiteSpace = "nowrap";
-    title.style.overflow = "hidden";
-    title.style.textOverflow = "ellipsis";
-
-    const controls = doc.createElement("div");
-    controls.style.display = "flex";
-    controls.style.alignItems = "center";
-    controls.style.gap = "10px";
-
-    /* ===== OPACITY ===== */
-    const slider = doc.createElement("input");
-    slider.id = SLIDER_ID;
-    slider.type = "range";
-    slider.min = "20";
-    slider.max = "100";
-    slider.value = "100";
-    slider.style.width = "110px";
-
-    slider.addEventListener("input", () => {
-      wrap.style.opacity = String((parseInt(slider.value, 10) || 100) / 100);
-    });
-
-    /* ===== MINIMIZE ===== */
-    const btnMin = doc.createElement("button");
-    btnMin.id = BTN_MIN_ID;
-    btnMin.textContent = "–";
-    btnMin.title = "Minimizza";
-    btnMin.style.border = "0";
-    btnMin.style.background = "transparent";
-    btnMin.style.fontSize = "22px";
-    btnMin.style.cursor = "pointer";
-
-    /* ===== CLOSE ===== */
-    const btnClose = doc.createElement("button");
-    btnClose.id = BTN_CLOSE_ID;
-    btnClose.textContent = "✕";
-    btnClose.title = "Chiudi";
-    btnClose.style.border = "0";
-    btnClose.style.background = "transparent";
-    btnClose.style.fontSize = "18px";
-    btnClose.style.cursor = "pointer";
-
-    btnClose.addEventListener("click", () => {
-      removeIfExists(doc);
-      debugLog("[bacheca] chiusa (X)");
-    });
-
-    // ordine: Opacity / Minimize / Close
-    controls.appendChild(slider);
-    controls.appendChild(btnMin);
-    controls.appendChild(btnClose);
-
-    bar.appendChild(title);
-    bar.appendChild(controls);
-
-    /* ================= IFRAME ================= */
-    const iframe = doc.createElement("iframe");
-    iframe.id = IFRAME_ID;
-    iframe.src = URL;
-    iframe.style.width = "100%";
-    iframe.style.height = "calc(100% - 34px)";
-    iframe.style.border = "0";
-
-    /* ================= RESIZE (bottom-right) ================= */
-    const resizer = doc.createElement("div");
-    resizer.id = RESIZE_ID;
-    resizer.style.position = "absolute";
-    resizer.style.right = "0";
-    resizer.style.bottom = "0";
-    resizer.style.width = "16px";
-    resizer.style.height = "16px";
-    resizer.style.cursor = "se-resize";
-
-    resizer.addEventListener("mousedown", (e) => {
-      if (wrap.dataset.minimized === "1") return;
-      e.preventDefault?.();
-
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const rect = wrap.getBoundingClientRect();
-
-      function onMove(ev) {
-        const newW = clamp(rect.width + (ev.clientX - startX), MIN_W, vw - EDGE_PAD);
-        const newH = clamp(rect.height + (ev.clientY - startY), MIN_H, vh - EDGE_PAD);
-        wrap.style.width = newW + "px";
-        wrap.style.height = newH + "px";
-      }
-
-      function onUp() {
-        win.removeEventListener("mousemove", onMove, true);
-        win.removeEventListener("mouseup", onUp, true);
-      }
-
-      win.addEventListener("mousemove", onMove, true);
-      win.addEventListener("mouseup", onUp, true);
-    });
-
-    /* ================= DRAG + SNAP ================= */
-    bar.addEventListener("mousedown", (e) => {
-      if (wrap.dataset.minimized === "1") return;
-      if (e.target.closest(`#${SLIDER_ID}, #${BTN_MIN_ID}, #${BTN_CLOSE_ID}`)) return;
-
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const rect = wrap.getBoundingClientRect();
-
-      function onMove(ev) {
-        let nl = rect.left + (ev.clientX - startX);
-        let nt = rect.top + (ev.clientY - startY);
-
-        nl = snapToEdge(clamp(nl, EDGE_PAD, vw - rect.width - EDGE_PAD), EDGE_PAD, SNAP_PX);
-        nt = snapToEdge(clamp(nt, EDGE_PAD, vh - rect.height - EDGE_PAD), EDGE_PAD, SNAP_PX);
-
-        wrap.style.left = nl + "px";
-        wrap.style.top = nt + "px";
-      }
-
-      function onUp() {
-        win.removeEventListener("mousemove", onMove, true);
-        win.removeEventListener("mouseup", onUp, true);
-      }
-
-      win.addEventListener("mousemove", onMove, true);
-      win.addEventListener("mouseup", onUp, true);
-    });
-
-    /* ================= MINIMIZE ================= */
-    btnMin.addEventListener("click", () => {
-      const min = wrap.dataset.minimized === "1";
-      wrap.dataset.minimized = min ? "0" : "1";
-
-      if (!min) {
-        wrap.dataset.openLeft = wrap.style.left;
-        wrap.dataset.openTop = wrap.style.top;
-        wrap.dataset.openW = wrap.style.width;
-        wrap.dataset.openH = wrap.style.height;
-
-        wrap.style.left = "";
-        wrap.style.top = "";
-        wrap.style.right = "12px";
-        wrap.style.bottom = "12px";
-        wrap.style.width = "420px";
-        wrap.style.height = "34px";
-        iframe.style.display = "none";
-        resizer.style.display = "none";
-        btnMin.textContent = "▢";
-      } else {
-        wrap.style.right = "";
-        wrap.style.bottom = "";
-        wrap.style.left = wrap.dataset.openLeft;
-        wrap.style.top = wrap.dataset.openTop;
-        wrap.style.width = wrap.dataset.openW;
-        wrap.style.height = wrap.dataset.openH;
-        iframe.style.display = "block";
-        resizer.style.display = "block";
-        btnMin.textContent = "–";
-      }
-    });
-
-    /* ================= MOUNT ================= */
-    wrap.appendChild(bar);
-    wrap.appendChild(iframe);
-    wrap.appendChild(resizer);
-    doc.body.appendChild(wrap);
-
-    debugLog("[bacheca] frame pronto");
-  }
-
-  // export pubblico
-  w.ExtremePlug.features.bacheca = { open };
+  w.ExtremePlug.features.bacheca = { open: overlay.open };
 })(window);

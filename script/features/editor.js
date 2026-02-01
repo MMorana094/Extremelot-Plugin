@@ -1,369 +1,426 @@
-// features/editor.js  (FRAME-SAFE + UI + CONTACARATTERI + OPACITY SLIDER + CLOSE)
+// /script/features/editor.js
+// FRAME/TAB-SAFE + UI + CONTACARATTERI + OPACITY SLIDER + CLOSE
+// PATCH: mount SEMPRE su top.document.documentElement (come lente/bacheca/azioni)
+
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
   w.ExtremePlug.editor = w.ExtremePlug.editor || {};
 
+  const debugLog = w.ExtremePlug?.debug?.debugLog || function () {};
+
   const MAXLEN = 2000;
 
-  // =========================
-  // Target document (frame-safe)
-  // =========================
-  function getTargetDoc() {
-    const d = w.ExtremePlug?.menu?._lastTargetDoc;
-    if (d?.body) return d;
-    const resultDoc = w.top?.result?.document;
-    if (resultDoc?.body) return resultDoc;
-    return w.document;
-  }
+  const ROOT_ID = "ep-overlay-root"; // stesso root usato dalle finestre iframe
+  const WRAP_ID = "ep-editor-wrap";
+  const RESIZE_ID = "ep-editor-resize";
 
-  function get$ForDoc(doc) {
+  const EDGE_PAD = 10;
+  const SNAP_PX = 18;
+
+  const DEFAULT_W = 640;
+  const DEFAULT_H = 380;
+
+  const MIN_W = 550;
+  const MIN_H = 280;
+
+  function getTopWin() {
     try {
-      const win = doc?.defaultView;
-      return win?.jQuery || w.top?.jQuery || w.jQuery || null;
+      return w.top || w;
     } catch (_) {
-      return w.top?.jQuery || w.jQuery || null;
+      return w;
     }
   }
 
-  // =========================
-  // Styles
-  // =========================
-  function ensureEditorStyle(doc) {
-    if (!doc?.head || doc.getElementById("extremeplug-editor-style")) return;
+  function getRoot(topWin) {
+    const doc = topWin.document;
+    if (!doc?.documentElement) return null;
 
-    const st = doc.createElement("style");
-    st.id = "extremeplug-editor-style";
-    st.textContent = `
-      /* --- Pannello editor --- */
-      #divinfinestra .intedit{
-        background:#f6f6f6;
-        border:1px solid #cfcfcf;
-        border-radius:10px;
-        padding:10px;
-        box-shadow:0 1px 4px rgba(0,0,0,.12);
-        cursor: move; /* drag da tutto il pannello (ma vedi draggable cancel/handle) */
-      }
+    let root = doc.getElementById(ROOT_ID);
+    if (root) return root;
 
-      #divinfinestra #mioeditorino{
-        width:100%;
-        height:210px;
-        resize:vertical;
-        padding:8px;
-        border:1px solid #bbb;
-        border-radius:6px;
-        font-family:Arial,sans-serif;
-        font-size:14px;
-        box-sizing:border-box;
-        background:#fff;
-        cursor:text; /* non trascinare quando scrivi */
-      }
+    root = doc.createElement("div");
+    root.id = ROOT_ID;
+    root.style.position = "fixed";
+    root.style.left = "0";
+    root.style.top = "0";
+    root.style.width = "0";
+    root.style.height = "0";
+    root.style.zIndex = "2147483647";
+    root.style.pointerEvents = "none";
 
-      #divinfinestra .ep-row{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-        margin-top:8px;
-      }
-
-      #divinfinestra .ep-actions{
-        display:flex;
-        gap:6px;
-        align-items:center;
-      }
-
-      #divinfinestra button{
-        padding:6px 12px;
-        border:1px solid #aaa;
-        border-radius:6px;
-        background:#fff;
-        cursor:pointer;
-      }
-      #divinfinestra button:hover{ background:#f0f0f0; }
-
-      #divinfinestra #contacaratteri{
-        font-size:12px;
-        padding:2px 8px;
-        border:1px solid #ddd;
-        border-radius:999px;
-        background:#fff;
-        white-space:nowrap;
-        cursor: default;
-      }
-
-      /* ===== OPACITY SLIDER (solo per l'editor) ===== */
-      #divinfinestra .ep-opacity-wrap{
-        display:flex;
-        align-items:center;
-        gap:6px;
-      }
-      #divinfinestra .ep-opacity-label{
-        font-size:12px;
-        color:#444;
-        white-space:nowrap;
-      }
-      #divinfinestra input.ep-opacity{
-        width:110px;
-        height:12px;
-        cursor:pointer;
-      }
-
-      /* --- jQuery UI dialog: wrapper neutro (no bordo/no ombra/no padding) --- */
-      .ui-dialog:has(#divinfinestra){
-        background: transparent !important;
-        border: 0 !important;
-        box-shadow: none !important;
-        overflow: visible !important;
-      }
-
-      .ui-dialog:has(#divinfinestra) .ui-dialog-titlebar{
-        background: transparent !important;
-        border: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important; /* niente fascia */
-      }
-
-      .ui-dialog:has(#divinfinestra) .ui-dialog-title{
-        font-size: 0 !important;
-        line-height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-
-      .ui-dialog:has(#divinfinestra) .ui-dialog-titlebar-close{
-        display: none !important; /* chiusura gestita dal bottone "Chiudi" */
-      }
-
-      .ui-dialog:has(#divinfinestra) .ui-dialog-content{
-        background: transparent !important;
-        border: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      .ui-dialog:has(#divinfinestra) #divinfinestra{
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      /* Drag bar interna: sempre “prendibile” */
-      #divinfinestra .ep-dragbar{
-        height: 18px;
-        margin: -10px -10px 8px -10px; /* si allinea al padding della card */
-        border-radius: 10px 10px 0 0;
-        cursor: move;
-        background: rgba(0,0,0,0.04);
-        display:flex;
-        align-items:center;
-        justify-content:flex-end;
-        gap:8px;
-        padding:0 8px;
-        box-sizing:border-box;
-      }
-      #divinfinestra .ep-dragbar:hover{
-        background: rgba(0,0,0,0.07);
-      }
-    `;
-    doc.head.appendChild(st);
+    doc.documentElement.appendChild(root);
+    return root;
   }
 
-  // =========================
-  // Character counter
-  // =========================
+  function removeIfExists(doc) {
+    try {
+      const old = doc.getElementById(WRAP_ID);
+      if (old) old.remove();
+    } catch (_) {}
+  }
+
+  function clamp(n, min, max) {
+    n = Number(n);
+    if (!isFinite(n)) n = min;
+    max = Math.max(max, min);
+    if (n < min) return min;
+    if (n > max) return max;
+    return n;
+  }
+
+  function snapToEdge(value, edgeValue, snapPx) {
+    return Math.abs(value - edgeValue) <= snapPx ? edgeValue : value;
+  }
+
   function updateCounter(doc) {
-    const ta = doc.getElementById("mioeditorino");
-    const cc = doc.getElementById("contacaratteri");
+    const ta = doc.getElementById("ep-editor-textarea");
+    const cc = doc.getElementById("ep-editor-counter");
     if (!ta || !cc) return;
     cc.textContent = `${ta.value.length}/${MAXLEN}`;
   }
 
-  function bindCharCounter(doc, $) {
-    const $ta = $(doc).find("#mioeditorino");
-    if (!$ta.length) return;
-
-    $ta.off(".charcount").on("input.charcount keyup.charcount focus.charcount blur.charcount", function () {
-      updateCounter(doc);
-    });
-
-    updateCounter(doc);
-  }
-
-  function ccc() {
-    const doc = getTargetDoc();
-    const $ = get$ForDoc(doc);
-    if ($) bindCharCounter(doc, $);
-  }
-
-  // =========================
-  // Close editor
-  // =========================
-  function closeEditor(doc, $) {
-    const $dlg = $(doc).find("#divinfinestra");
-    if (!$dlg.length) return;
-
-    if (typeof $dlg.dialog === "function") {
-      try { $dlg.dialog("close"); } catch (_) {}
-    } else {
-      $dlg.remove();
-    }
-  }
-
-  // =========================
-  // Opacity handling
-  // - Applica opacità al "widget" jQuery UI (wrapper) se presente
-  // - Fallback: applica opacità al pannello
-  // =========================
-  function applyOpacity(doc, $, value) {
+  function applyOpacity(doc, value) {
     const v = Number(value);
     const op = Math.max(0.2, Math.min(1, (isFinite(v) ? v : 100) / 100));
-
-    try {
-      const $dlg = $(doc).find("#divinfinestra");
-      if (!$dlg.length) return;
-
-      // Se è un dialog jQuery UI: opacità sul wrapper (finestra intera)
-      if (typeof $dlg.dialog === "function") {
-        const $widget = $dlg.dialog("widget");
-        if ($widget?.length) {
-          $widget.css("opacity", op);
-          return;
-        }
-      }
-
-      // Fallback (no dialog): opacità sul pannello
-      $dlg.css("opacity", op);
-    } catch (_) {}
+    const wrap = doc.getElementById(WRAP_ID);
+    if (wrap) wrap.style.opacity = String(op);
   }
 
-  // =========================
-  // Open editor
-  // =========================
-  function apriEditor() {
-    const doc = getTargetDoc();
-    const $ = get$ForDoc(doc);
-    if (!$ || !doc?.body) return;
+  function buildUI(doc) {
+    const wrap = doc.createElement("div");
+    wrap.id = WRAP_ID;
+    wrap.style.position = "fixed";
+    wrap.style.zIndex = "2147483647";
+    wrap.style.background = "#fff";
+    wrap.style.border = "1px solid rgba(0,0,0,0.35)";
+    wrap.style.boxShadow = "0 10px 40px rgba(0,0,0,0.35)";
+    wrap.style.borderRadius = "10px";
+    wrap.style.overflow = "hidden";
+    wrap.style.pointerEvents = "auto";
+    wrap.style.transform = "none";
+    wrap.style.opacity = "1";
+    wrap.dataset.minimized = "0";
+    wrap.style.display = "flex";
+    wrap.style.flexDirection = "column";
 
-    ensureEditorStyle(doc);
+    const bar = doc.createElement("div");
+    bar.className = "ep-editor-dragbar";
+    bar.title = "Trascina per spostare";
+    bar.style.height = "34px";
+    bar.style.display = "flex";
+    bar.style.alignItems = "center";
+    bar.style.justifyContent = "space-between";
+    bar.style.padding = "0 10px";
+    bar.style.background = "#6e0000";
+    bar.style.borderBottom = "1px solid rgba(0,0,0,0.12)";
+    bar.style.userSelect = "none";
+    bar.style.cursor = "move";
+    bar.style.font = "13px Arial";
 
-    // Cleanup: rimuovi eventuale editor precedente
-    try {
-      const $old = $(doc).find("#divinfinestra");
-      if ($old.length && typeof $old.dialog === "function") {
-        try { $old.dialog("destroy"); } catch (_) {}
-      }
-      $old.remove();
-    } catch (_) {}
+    const title = doc.createElement("div");
+    title.textContent = "Editor";
+    title.style.fontWeight = "700";
+    title.style.color = "#FFFFFF";
+    title.style.whiteSpace = "nowrap";
+    title.style.overflow = "hidden";
+    title.style.textOverflow = "ellipsis";
+    title.style.paddingRight = "10px";
 
-    // UI
-    const html = `
-      <div id="divinfinestra">
-        <div class="intedit">
-          <div class="ep-dragbar" title="Trascina per spostare">
-            <div class="ep-opacity-wrap" title="Opacità finestra">
-              <span class="ep-opacity-label">Opacity</span>
-              <input class="ep-opacity" type="range" min="20" max="100" value="100" />
-            </div>
-          </div>
+    const controls = doc.createElement("div");
+    controls.style.display = "flex";
+    controls.style.alignItems = "center";
+    controls.style.gap = "10px";
 
-          <textarea id="mioeditorino" placeholder="Scrivi la tua azione" maxlength="${MAXLEN}"></textarea>
+    // Opacity slider
+    const opWrap = doc.createElement("div");
+    opWrap.style.display = "flex";
+    opWrap.style.alignItems = "center";
+    opWrap.style.gap = "6px";
 
-          <div class="ep-row">
-            <div class="ep-actions">
-              <button id="button" type="button">Copia</button>
-              <button id="close_editor" type="button">Chiudi</button>
-            </div>
-            <div id="contacaratteri">0/${MAXLEN}</div>
-          </div>
-        </div>
-      </div>
-    `;
+    const opLabel = doc.createElement("span");
+    opLabel.textContent = "Opacity";
+    opLabel.style.fontSize = "12px";
+    opLabel.style.color = "#444";
+    opLabel.style.whiteSpace = "nowrap";
 
-    $(doc.body).append(html);
-    const $dlg = $(doc).find("#divinfinestra");
+    const slider = doc.createElement("input");
+    slider.type = "range";
+    slider.min = "20";
+    slider.max = "100";
+    slider.value = "100";
+    slider.style.width = "110px";
+    slider.style.cursor = "pointer";
+    slider.addEventListener("input", (e) => {
+      try { e.stopPropagation?.(); } catch (_) {}
+      applyOpacity(doc, slider.value);
+    });
+    slider.addEventListener("mousedown", (e) => {
+      try { e.stopPropagation?.(); } catch (_) {}
+    });
 
-    // Slider: aggiorna opacità (di default 100%)
-    $(doc).find("#divinfinestra .ep-opacity")
-      .off(".epOpacity")
-      .on("input.epOpacity change.epOpacity", function (e) {
-        // evita drag mentre usi lo slider
-        try { e.stopPropagation(); } catch (_) {}
-        applyOpacity(doc, $, this.value);
-      })
-      .on("mousedown.epOpacity pointerdown.epOpacity", function (e) {
-        try { e.stopPropagation(); } catch (_) {}
-      });
+    opWrap.appendChild(opLabel);
+    opWrap.appendChild(slider);
 
-    if (typeof $dlg.dialog === "function") {
-      $dlg.dialog({
-        title: "",
-        width: 640,
-        height: 380,
-        minWidth: 550,
-        minHeight: 280,
-        resizable: true,
-        position: { my: "center", at: "center", of: doc.defaultView || w.window },
-        open: function () {
-          ccc();
-          updateCounter(doc);
+    // Close button
+    const btnClose = doc.createElement("button");
+    btnClose.textContent = "✕";
+    btnClose.title = "Chiudi";
+    btnClose.style.border = "0";
+    btnClose.style.color = "#FFF";
+    btnClose.style.background = "transparent";
+    btnClose.style.fontSize = "18px";
+    btnClose.style.cursor = "pointer";
+    btnClose.style.padding = "0 6px";
+    btnClose.addEventListener("click", () => removeIfExists(doc));
 
-          // Applica opacità iniziale
-          const v = $(doc).find("#divinfinestra .ep-opacity").val() || 100;
-          applyOpacity(doc, $, v);
-        },
-        close: function () {
-          try { $(this).dialog("destroy"); } catch (_) {}
-          $(this).remove();
-        }
-      });
+    controls.appendChild(opWrap);
+    controls.appendChild(btnClose);
 
-      // Trascina dalla dragbar interna
-      try {
-        const $widget = $dlg.dialog("widget");
-        if ($widget && typeof $widget.draggable === "function") {
-          $widget.draggable("option", {
-            handle: ".ep-dragbar",
-            cancel: "textarea, button, input, select, option"
-          });
-        }
-      } catch (_) {}
+    bar.appendChild(title);
+    bar.appendChild(controls);
 
-      // dialogExtend (se presente)
-      try {
-        if ($.fn && $.fn.dialogExtend) {
-          $dlg.dialogExtend({ maximizable: true, minimizable: true });
-        }
-      } catch (_) {}
-    } else {
-      // Fallback se non c'è jQuery UI dialog
-      $dlg.css({ position: "fixed", top: "80px", right: "40px", zIndex: 9999999 });
-      ccc();
-      updateCounter(doc);
+    // Body
+    const body = doc.createElement("div");
+    body.style.padding = "10px";
+    body.style.background = "#f6f6f6";
+    body.style.flex = "1";
+    body.style.display = "flex";
+    body.style.flexDirection = "column";
+    body.style.minHeight = "0";
 
-      // Applica opacità iniziale
-      const v = $(doc).find("#divinfinestra .ep-opacity").val() || 100;
-      applyOpacity(doc, $, v);
-    }
 
-    // Copia (nel tuo storico era CUT)
-    $(doc).find("#button").off("click.editor").on("click.editor", function () {
-      const ta = doc.getElementById("mioeditorino");
-      if (!ta) return;
+    const ta = doc.createElement("textarea");
+    ta.id = "ep-editor-textarea";
+    ta.placeholder = "Scrivi la tua azione";
+    ta.maxLength = MAXLEN;
+    ta.style.width = "100%";
+    ta.style.flex = "1";
+    ta.style.minHeight = "160px";
+    ta.style.resize = "none";
+    ta.style.height = "auto";
+    ta.style.padding = "8px";
+    ta.style.border = "1px solid #bbb";
+    ta.style.borderRadius = "6px";
+    ta.style.fontFamily = "Arial, sans-serif";
+    ta.style.fontSize = "14px";
+    ta.style.boxSizing = "border-box";
+    ta.style.background = "#fff";
+
+    ta.addEventListener("input", () => updateCounter(doc));
+
+    const row = doc.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "10px";
+    row.style.marginTop = "8px";
+
+    const actions = doc.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "6px";
+    actions.style.alignItems = "center";
+
+    const btnCopy = doc.createElement("button");
+    btnCopy.textContent = "Copia";
+    btnCopy.type = "button";
+    btnCopy.style.padding = "6px 12px";
+    btnCopy.style.border = "1px solid #aaa";
+    btnCopy.style.borderRadius = "6px";
+    btnCopy.style.background = "#fff";
+    btnCopy.style.cursor = "pointer";
+
+    btnCopy.addEventListener("click", () => {
       ta.focus();
       ta.select();
+      // mantengo il tuo storico: cut
       try { doc.execCommand("cut"); } catch (_) {}
       updateCounter(doc);
     });
 
-    // Close
-    $(doc).find("#close_editor").off("click.editor").on("click.editor", function () {
-      closeEditor(doc, $);
+    const btnClose2 = doc.createElement("button");
+    btnClose2.textContent = "Chiudi";
+    btnClose2.type = "button";
+    btnClose2.style.padding = "6px 12px";
+    btnClose2.style.border = "1px solid #aaa";
+    btnClose2.style.borderRadius = "6px";
+    btnClose2.style.background = "#fff";
+    btnClose2.style.cursor = "pointer";
+    btnClose2.addEventListener("click", () => removeIfExists(doc));
+
+    actions.appendChild(btnCopy);
+    actions.appendChild(btnClose2);
+
+    const counter = doc.createElement("div");
+    counter.id = "ep-editor-counter";
+    counter.textContent = `0/${MAXLEN}`;
+    counter.style.fontSize = "12px";
+    counter.style.padding = "2px 8px";
+    counter.style.border = "1px solid #ddd";
+    counter.style.borderRadius = "999px";
+    counter.style.background = "#fff";
+    counter.style.whiteSpace = "nowrap";
+
+    row.appendChild(actions);
+    row.appendChild(counter);
+
+    body.appendChild(ta);
+    body.appendChild(row);
+
+    // Resize handle (bottom-right)
+    const resizer = doc.createElement("div");
+    resizer.id = RESIZE_ID;
+    resizer.title = "Ridimensiona";
+    resizer.style.position = "absolute";
+    resizer.style.right = "0";
+    resizer.style.bottom = "0";
+    resizer.style.width = "16px";
+    resizer.style.height = "16px";
+    resizer.style.cursor = "se-resize";
+    resizer.style.background =
+      "linear-gradient(225deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.10) 40%, rgba(0,0,0,0) 60%)";
+
+    wrap.appendChild(bar);
+    wrap.appendChild(body);
+    wrap.appendChild(resizer);
+
+    return { wrap, bar, ta, slider, resizer };
+  }
+
+  function apriEditor() {
+    const topWin = getTopWin();
+    const doc = topWin.document;
+    const root = getRoot(topWin);
+
+    debugLog("[editor] apriEditor() top-mount", { hasDoc: !!doc, hasRoot: !!root });
+    if (!doc || !root) return;
+
+    // toggle (se già aperto, chiudi)
+    const existing = doc.getElementById(WRAP_ID);
+    if (existing) {
+      existing.remove();
+      debugLog("[editor] chiuso (toggle)");
+      return;
+    }
+
+    const { wrap, bar, ta, slider, resizer } = buildUI(doc);
+
+    const vw = topWin.innerWidth || 1200;
+    const vh = topWin.innerHeight || 800;
+
+    const w0 = clamp(DEFAULT_W, MIN_W, vw - 2 * EDGE_PAD);
+    const h0 = clamp(DEFAULT_H, MIN_H, vh - 2 * EDGE_PAD);
+
+    const left0 = clamp(Math.round((vw - w0) / 2), EDGE_PAD, vw - w0 - EDGE_PAD);
+    const top0 = clamp(Math.round((vh - h0) / 2), EDGE_PAD, vh - h0 - EDGE_PAD);
+
+    wrap.style.left = left0 + "px";
+    wrap.style.top = top0 + "px";
+    wrap.style.width = w0 + "px";
+    wrap.style.height = h0 + "px";
+
+    wrap.dataset.openLeft = wrap.style.left;
+    wrap.dataset.openTop = wrap.style.top;
+    wrap.dataset.openW = wrap.style.width;
+    wrap.dataset.openH = wrap.style.height;
+
+    // Drag + snap
+    bar.addEventListener("mousedown", (e) => {
+      // non trascinare mentre tocchi lo slider o dentro bottoni
+      if (e.target && e.target.closest && e.target.closest("input,button,textarea")) return;
+
+      e.preventDefault?.();
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const rect = wrap.getBoundingClientRect();
+
+      const startLeft = rect.left;
+      const startTop = rect.top;
+      const curW = rect.width;
+      const curH = rect.height;
+
+      function onMove(ev) {
+        const vw2 = topWin.innerWidth || vw;
+        const vh2 = topWin.innerHeight || vh;
+
+        let nl = startLeft + (ev.clientX - startX);
+        let nt = startTop + (ev.clientY - startY);
+
+        nl = clamp(nl, EDGE_PAD, vw2 - curW - EDGE_PAD);
+        nt = clamp(nt, EDGE_PAD, vh2 - curH - EDGE_PAD);
+
+        const leftEdge = EDGE_PAD;
+        const topEdge = EDGE_PAD;
+        const rightEdge = vw2 - curW - EDGE_PAD;
+        const bottomEdge = vh2 - curH - EDGE_PAD;
+
+        nl = snapToEdge(nl, leftEdge, SNAP_PX);
+        nl = snapToEdge(nl, rightEdge, SNAP_PX);
+        nt = snapToEdge(nt, topEdge, SNAP_PX);
+        nt = snapToEdge(nt, bottomEdge, SNAP_PX);
+
+        wrap.style.left = Math.round(nl) + "px";
+        wrap.style.top = Math.round(nt) + "px";
+      }
+
+      function onUp() {
+        topWin.removeEventListener("mousemove", onMove, true);
+        topWin.removeEventListener("mouseup", onUp, true);
+      }
+
+      topWin.addEventListener("mousemove", onMove, true);
+      topWin.addEventListener("mouseup", onUp, true);
     });
+
+    // Resize bottom-right
+    resizer.addEventListener("mousedown", (e) => {
+      e.preventDefault?.();
+      e.stopPropagation?.();
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const rect = wrap.getBoundingClientRect();
+      const startW = rect.width;
+      const startH = rect.height;
+
+      function onMove(ev) {
+        const vw2 = topWin.innerWidth || vw;
+        const vh2 = topWin.innerHeight || vh;
+
+        let newW = clamp(startW + (ev.clientX - startX), MIN_W, vw2 - EDGE_PAD);
+        let newH = clamp(startH + (ev.clientY - startY), MIN_H, vh2 - EDGE_PAD);
+
+        const maxW = vw2 - EDGE_PAD;
+        const maxH = vh2 - EDGE_PAD;
+
+        newW = snapToEdge(newW, maxW, SNAP_PX);
+        newH = snapToEdge(newH, maxH, SNAP_PX);
+
+        wrap.style.width = Math.round(newW) + "px";
+        wrap.style.height = Math.round(newH) + "px";
+      }
+
+      function onUp() {
+        topWin.removeEventListener("mousemove", onMove, true);
+        topWin.removeEventListener("mouseup", onUp, true);
+      }
+
+      topWin.addEventListener("mousemove", onMove, true);
+      topWin.addEventListener("mouseup", onUp, true);
+    });
+
+    // init counter + opacity
+    updateCounter(doc);
+    applyOpacity(doc, slider.value);
+
+    root.appendChild(wrap);
+    ta.focus();
+
+    debugLog("[editor] aperto (top-mounted)");
   }
 
   // API legacy + SRP
-  w.ccc = ccc;
   w.apriEditor = apriEditor;
   w.ExtremePlug.editor.apriEditor = apriEditor;
   w.ExtremePlug.editor.apri = apriEditor;
-
 })(window);

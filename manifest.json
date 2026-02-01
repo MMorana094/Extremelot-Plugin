@@ -44,6 +44,7 @@
         "script/core/debug.js",
         "script/core/dom.js",
         "script/core/pgData.js",
+        "script/ui/overlay.js",
         "script/ui/finestra.js",
         "script/ui/dialogs.js",
         "script/ui/windows.js",
@@ -53,8 +54,10 @@
         "script/features/bacheca.js",
         "script/features/editor.js",
         "script/features/salvaChat.js",
+        "script/features/gestionale.js",
         "script/features/posta.js",
         "script/features/lente.js",
+        "script/features/regole.js",
         "script/features/azioniFinestra.js",
         "script/events/bindings.js",
         "script/main.js"

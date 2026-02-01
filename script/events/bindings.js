@@ -47,13 +47,26 @@
           };
 
         case "leggiposta":
-          return () => w.leggiposta?.();
+          return () => w.ExtremePlug?.features?.leggiposta?.leggiposta?.();
 
         case "scriviposta":
           return () => w.scriviposta?.();
 
+        // ✅ GESTIONALE (nuovo overlay) + fallback vecchia funzione
         case "gest_Chat":
-          return () => w.apriGestionale?.();
+          return () => {
+            debugLog("[BIND] click gestionale (gest_Chat)");
+            const opened = w.ExtremePlug?.features?.gestionale?.open;
+            if (typeof opened === "function") return opened();
+            return w.apriGestionale?.();
+          };
+
+        // opzionale: se in futuro il bottone avrà id dedicato "gestionale"
+        case "gestionale":
+          return () => {
+            debugLog("[BIND] click gestionale (gestionale)");
+            return w.ExtremePlug?.features?.gestionale?.open?.();
+          };
 
         case "banca":
           return () => w.apriBanca?.();
@@ -66,6 +79,10 @@
 
         case "regole":
           return () => {
+            debugLog("[BIND] click regole");
+            const open = w.ExtremePlug?.features?.regole?.open;
+            if (typeof open === "function") return open();
+            // fallback vecchio comportamento, se serve
             if (!C) return;
             const link = C.LOTNEW_BASE + "leggi/leggi.asp";
             openFinestra("regoleLot", "Regolamenti", C.proxyUrl(link));
