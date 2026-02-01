@@ -61,21 +61,27 @@
             return w.apriGestionale?.();
           };
 
-        // opzionale: se in futuro il bottone avrà id dedicato "gestionale"
-        case "gestionale":
+        case "banca":
           return () => {
-            debugLog("[BIND] click gestionale (gestionale)");
-            return w.ExtremePlug?.features?.gestionale?.open?.();
+            debugLog("[BIND] click banca");
+            const open = w.ExtremePlug?.features?.banca?.open;
+            if (typeof open === "function") return open();
+            return w.apriBanca?.(); // fallback vecchio
           };
 
-        case "banca":
-          return () => w.apriBanca?.();
-
         case "lotInforma":
-          return () => w.apriLotInforma?.();
+          return () => {
+            debugLog("[BIND] click lotInforma");
+            const open = w.ExtremePlug?.features?.lotInforma?.open;
+            if (typeof open === "function") return open();
+            return w.apriLotInforma?.(); // fallback vecchio
+          };
 
         case "mappaTest":
-          return () => w.ExtremePlug?.windows?.apriMappaTestuale?.();
+          return () => {
+            debugLog("[BIND] click mappa");
+            return w.ExtremePlug?.features?.mappa?.open?.();
+          };
 
         case "regole":
           return () => {
