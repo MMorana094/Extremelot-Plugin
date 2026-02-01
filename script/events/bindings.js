@@ -41,7 +41,10 @@
           return () => w.salvaChat?.();
 
         case "scelto_forum":
-          return () => w.bacheca?.();
+          return () => {
+            debugLog("[BIND] click bacheca");
+            w.ExtremePlug?.features?.bacheca?.open?.();
+          };
 
         case "leggiposta":
           return () => w.leggiposta?.();
@@ -70,14 +73,16 @@
 
         case "azioniFinestra":
           return () => {
-            if (!C) return;
-            const link = C.PROC_BASE + "azioni_21.asp";
-            openFinestra("azioniFinestra", "Azioni", C.proxyUrl(link));
+            debugLog("[BIND] click azioniFinestra");
+            w.ExtremePlug?.features?.azioniFinestra?.open?.();
           };
 
-        // ✅ LENTE / DESCRIZIONE (hard-coded: vedi features/lente.js)
+        // ✅ LENTE
         case "descLuogo":
-          return () => w.ExtremePlug?.lente?.open?.();
+          return () => {
+            debugLog("[BIND] click descLuogo");
+            w.ExtremePlug?.features?.lente?.open?.();
+          };
 
         default:
           return null;

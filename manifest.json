@@ -55,6 +55,7 @@
         "script/features/salvaChat.js",
         "script/features/posta.js",
         "script/features/lente.js",
+        "script/features/azioniFinestra.js",
         "script/events/bindings.js",
         "script/main.js"
       ]

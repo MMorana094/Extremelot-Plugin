@@ -1,29 +1,124 @@
 // script/features/scheda.js
+// Scheda PG: dialog base (Sì/No + Cerca) + Viewer iframe stile “Scheda”
+
 (function (w) {
   const debugLog = w.ExtremePlug?.debug?.debugLog || function () {};
-
   debugLog("[scheda] loaded");
 
-  // Manteniamo l'ultimo doc/$ UI per aprire il viewer anche dopo click
+  // Ultimo contesto UI valido (doc + jQuery) per riaprire viewer dopo click
   let LAST_UI_DOC = null;
   let LAST_UI_$ = null;
 
   const SCHEDA_BASE_URL = "https://www.extremelot.eu/proc/schedaPG/scheda.asp?ID=";
 
-  // Dimensioni frame richieste
+  // Viewer fisso richiesto
   const VIEWER_W = 1000;
   const VIEWER_H = 600;
 
-  // =========================
-  // UI host: frame "result"
-  // =========================
+  // =========================================================
+  // getUiDoc() – FRAME-SAFE e “VISIBILITY-AWARE”
+  // In LOT alcuni frame sono tecnici o nascosti: il dialog può finire lì e non vedersi.
+  // Strategia:
+  //  0) se LAST_UI_DOC è ancora valido e il frame è visibile/grande, riusalo
+  //  1) altrimenti cerca ricorsivamente il frame accessibile con area più grande (visibile)
+  //     con una leggera preferenza per URL /proc/
+  //  2) fallback su documento corrente
+  // =========================================================
   function getUiDoc() {
+  // helper: il doc è un frameset host? (quindi NON va bene come UI container)
+  function isFramesetDoc(doc) {
     try {
-      const d = w.top?.frames?.result?.document;
-      if (d?.documentElement) return d;
-    } catch (_) {}
-    return null;
+      const b = doc?.body;
+      if (!b) return true;
+      const tag = (b.tagName || "").toUpperCase();
+      if (tag === "FRAMESET") return true;
+      // alcuni frameset hanno body "strano": controlliamo anche presence frameset
+      if (doc.querySelector("frameset")) return true;
+      return false;
+    } catch (_) {
+      return true;
+    }
   }
+
+  // helper: area visibile del frame
+  function getVisibleArea(win) {
+    try {
+      const fe = win.frameElement;
+      if (!fe) {
+        // top window
+        const vw = Math.max(0, win.innerWidth || 0);
+        const vh = Math.max(0, win.innerHeight || 0);
+        return vw * vh;
+      }
+      const cs = win.getComputedStyle(fe);
+      if (cs.display === "none" || cs.visibility === "hidden") return 0;
+      const r = fe.getBoundingClientRect();
+      return Math.max(0, r.width) * Math.max(0, r.height);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  // (0) riusa LAST_UI_DOC se è ancora valido, visibile e NON frameset
+  try {
+    if (LAST_UI_DOC?.body && !isFramesetDoc(LAST_UI_DOC)) {
+      const win = LAST_UI_DOC.defaultView;
+      const area = getVisibleArea(win);
+      if (area > 200 * 200) return LAST_UI_DOC;
+    }
+  } catch (_) {}
+
+  // (1) cerca ricorsivamente il frame visibile più grande, MA scarta frameset host
+  try {
+    const best = { doc: null, score: 0, url: "" };
+
+    const visit = (win) => {
+      let doc = null;
+      try { doc = win.document; } catch (_) { doc = null; }
+
+      if (doc?.body && !isFramesetDoc(doc)) {
+        const area = getVisibleArea(win);
+        const url = doc.URL || "";
+
+        // preferenza leggera per /proc/ (chat/mappa) e per /lotnew/ pagine interne
+        const boost =
+          (url.includes("/proc/") ? 1.25 : 1.0) *
+          (url.includes("/lotnew/") ? 1.10 : 1.0);
+
+        const score = area * boost;
+
+        if (score > best.score) {
+          best.doc = doc;
+          best.score = score;
+          best.url = url;
+        }
+      }
+
+      // ricorsione
+      try {
+        for (let i = 0; i < win.frames.length; i++) visit(win.frames[i]);
+      } catch (_) {}
+    };
+
+    visit(w.top);
+
+    if (best.doc?.body) {
+      debugLog("[vedischeda] getUiDoc selected (non-frameset)", {
+        url: best.url,
+        score: best.score
+      });
+      return best.doc;
+    }
+  } catch (_) {}
+
+  // (2) fallback: documento corrente solo se NON frameset
+  try {
+    if (w.document?.body && !isFramesetDoc(w.document)) return w.document;
+  } catch (_) {}
+
+  return null;
+}
+
 
   function appendToUiWhenReady(fn) {
     const t = setInterval(() => {
@@ -32,7 +127,6 @@
         if (doc?.body) {
           clearInterval(t);
           debugLog("[vedischeda] UI doc ready", {
-            frame: "result",
             url: doc.URL,
             hasBody: !!doc.body,
             readyState: doc.readyState
@@ -51,6 +145,30 @@
     }
   }
 
+  // =========================================================
+  // Posizionamento robusto (chat può avere overflow/scroll non standard)
+  // =========================================================
+  function forceDialogFixedCenter(doc, $dlg) {
+    try {
+      const $wrap = $dlg.closest(".ui-dialog");
+      const win = doc?.defaultView || w.window;
+      if (!$wrap.length || !win) return;
+
+      $wrap.css({ position: "fixed", left: "0px", top: "0px" });
+
+      const vw = Math.max(320, win.innerWidth || 0);
+      const vh = Math.max(240, win.innerHeight || 0);
+
+      const ww = $wrap.outerWidth() || 0;
+      const wh = $wrap.outerHeight() || 0;
+
+      const left = Math.max(6, Math.round((vw - ww) / 2));
+      const top = Math.max(6, Math.round((vh - wh) / 2));
+
+      $wrap.css({ left: left + "px", top: top + "px" });
+    } catch (_) {}
+  }
+
   // =========================
   // CSS
   // =========================
@@ -60,7 +178,7 @@
     const st = doc.createElement("style");
     st.id = "extremeplug-scheda-style";
     st.textContent = `
-      /* Card base */
+      /* Card base (dialog Sì/No + Cerca) */
       .ep-card{
         background:#f6f6f6;
         color:#222;
@@ -97,10 +215,9 @@
       .ui-widget-overlay{ z-index: 9999998 !important; }
 
       /* =========================
-         VIEWER (Scheda PG)
+         VIEWER (Scheda PG) - stile "Scheda"
          ========================= */
 
-      /* Dialog cornice generale */
       .ui-dialog.ep-scheda-viewer-ui{
         background: #f8e9aa !important;
         border: 3px solid #6e0000 !important;
@@ -113,7 +230,6 @@
           inset 0 0 0 3px rgba(244,227,150,.55) !important;
       }
 
-      /* Titlebar rosso */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar{
         background: #6e0000 !important;
         border: 0 !important;
@@ -122,8 +238,7 @@
 
         padding: 4px 10px !important;
         min-height: 22px !important;
-
-        position: relative !important; /* per ancorare i controlli */
+        position: relative !important;
       }
 
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-title{
@@ -134,7 +249,6 @@
         text-shadow: 0 1px 0 rgba(0,0,0,.45) !important;
       }
 
-      /* Content: niente padding / niente scroll del dialog */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-content{
         padding: 0 !important;
         margin: 0 !important;
@@ -142,7 +256,6 @@
         background: #000 !important;
       }
 
-      /* Niente buttonpane */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-buttonpane{
         display: none !important;
         height: 0 !important;
@@ -151,12 +264,10 @@
         border: 0 !important;
       }
 
-      /* Niente handles resize (frame fisso) */
       .ui-dialog.ep-scheda-viewer-ui .ui-resizable-handle{
         display: none !important;
       }
 
-      /* Viewer iframe */
       .ep-scheda-viewer{
         width: 100%;
         margin: 0;
@@ -216,7 +327,7 @@
       }
 
       /* =========================
-         CLOSE (viewer):
+         CLOSE (viewer): X sempre visibile
          ========================= */
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar-close .ui-button-text,
       .ui-dialog.ep-scheda-viewer-ui .ui-dialog-titlebar-close .ui-dialog-titlebar-close-text{
@@ -259,7 +370,7 @@
       }
 
       /* =========================
-         DIALOG BASE (SI/NO – CERCA)
+         DIALOG BASE (SI/NO – CERCA): niente pulsante close
          ========================= */
       .ui-dialog.ep-noclose .ui-dialog-titlebar-close{
         display: none !important;
@@ -283,7 +394,7 @@
   }
 
   // =========================
-  // PG name: (frame:logo)
+  // PG name: API o fallback (frame logo)
   // =========================
   function getOwnPgName() {
     const n1 = w.ExtremePlug?.pg?.getName?.();
@@ -309,16 +420,56 @@
   }
 
   // =========================
-  // Viewer: controlli titlebar (minimize + opacity) + close con X
+  // Dialog base (Sì/No e Search) - standard (NO X)
+  // =========================
+  function openDialogBasic(doc, $, $dlg, title, width, height) {
+    $dlg.dialog({
+      title: title || "Scheda",
+      width: width || 420,
+      height: height || "auto",
+      resizable: false,
+      draggable: true,
+      modal: false,
+      closeOnEscape: false,      // senza X: chiusura solo via bottoni
+      dialogClass: "ep-noclose", // nasconde la X solo qui
+      appendTo: $(doc.body),
+      position: { my: "center", at: "center", of: doc.defaultView || w.window },
+      open: function () {
+        try { $dlg.closest(".ui-dialog").addClass("ep-scheda-ui"); } catch (_) {}
+        debugLog("[vedischeda] dialog open", { title: title || "Scheda" });
+
+        // center robusto (chat/overflow)
+        setTimeout(() => forceDialogFixedCenter(doc, $dlg), 0);
+
+        // recenter su resize della viewport del frame
+        try {
+          $(doc.defaultView).off("resize.epSchedaBasic").on("resize.epSchedaBasic", () => {
+            forceDialogFixedCenter(doc, $dlg);
+          });
+        } catch (_) {}
+      },
+      close: function () {
+        debugLog("[vedischeda] dialog close", { title: title || "Scheda" });
+        try { $(doc.defaultView).off("resize.epSchedaBasic"); } catch (_) {}
+        try { $(this).dialog("destroy"); } catch (_) {}
+        $(this).remove();
+      }
+    });
+
+    try {
+      $dlg.closest(".ui-dialog").draggable("option", "handle", ".ui-dialog-titlebar");
+    } catch (_) {}
+  }
+
+  // =========================
+  // Viewer: controlli titlebar (opacity + minimize + close)
   // =========================
   function addViewerTitleControls(doc, $, $dlg, $wrap, fixedH) {
     const $title = $wrap.find(".ui-dialog-titlebar");
     if (!$title.length) return;
 
-    // evita doppioni
     if ($title.find(".ep-title-controls").length) return;
 
-    // container controlli
     const $controls = $(doc.createElement("div"));
     $controls.addClass("ep-title-controls");
 
@@ -332,44 +483,34 @@
 
     const $op = $(doc.createElement("input"));
     $op.addClass("ep-opacity");
-    $op.attr({
-      type: "range",
-      min: "20",
-      max: "100",
-      value: "100"
-    });
+    $op.attr({ type: "range", min: "20", max: "100", value: "100" });
 
     $opWrap.append($opLabel, $op);
 
-    // minimize button
+    // minimize
     const $min = $(doc.createElement("div"));
     $min.addClass("ep-titlebtn ep-minbtn");
     $min.attr("title", "Riduci a icona");
     $min.text("—");
 
     $controls.append($opWrap, $min);
-
-    // appende controls alla titlebar
     $title.append($controls);
 
-    // Stato minimize
+    // stato minimize
     $wrap.data("ep_minimized", false);
     $wrap.data("ep_saved_content_h", $dlg.height());
     $wrap.data("ep_fixed_h", fixedH);
 
-    // slider opacità (opacità intero frame)
-    $op.on("input.epOpacity change.epOpacity", function () {
+    $op.on("input.epOpacity change.epOpacity", function (e) {
+      try { e.stopPropagation(); } catch (_) {}
       const v = Number(this.value || 100);
       const op = Math.max(0.2, Math.min(1, v / 100));
       $wrap.css("opacity", op);
     });
-
-    // evita drag quando muovi lo slider
     $op.on("mousedown.epNoDrag pointerdown.epNoDrag", function (e) {
-      e.stopPropagation();
+      try { e.stopPropagation(); } catch (_) {}
     });
 
-    // minimize toggle
     $min.on("click.epMin", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -383,6 +524,7 @@
         $wrap.height(titleH + 2);
         $wrap.data("ep_minimized", true);
         $min.attr("title", "Ripristina").text("▢");
+        setTimeout(() => forceDialogFixedCenter(doc, $dlg), 0);
       } else {
         const contentH = Number($wrap.data("ep_saved_content_h")) || 400;
         const fixedH2 = Number($wrap.data("ep_fixed_h")) || 600;
@@ -395,50 +537,17 @@
         $wrap.height(fixedH2);
         $wrap.data("ep_minimized", false);
         $min.attr("title", "Riduci a icona").text("—");
+        setTimeout(() => forceDialogFixedCenter(doc, $dlg), 0);
       }
     });
 
-    // =========================
-    // CLOSE: sposta il close nativo dentro i controlli (la X la disegna il CSS ::before)
-    // =========================
+    // Close: sposta il close nativo dentro i controlli (X via CSS ::before)
     try {
       const $close = $wrap.find(".ui-dialog-titlebar-close").first();
       if ($close.length) {
         $close.attr("title", "Chiudi");
-        $controls.append($close); // lo sposta vicino al minimize
+        $controls.append($close);
       }
-    } catch (_) {}
-  }
-
-  // =========================
-  // Dialog base (Sì/No e Search) - NO CLOSE BUTTON
-  // =========================
-  function openDialogBasic(doc, $, $dlg, title, width, height) {
-    $dlg.dialog({
-      title: title || "Scheda",
-      width: width || 420,
-      height: height || "auto",
-      resizable: false,
-      draggable: true,
-      modal: false,
-      closeOnEscape: false,          // coerente: senza X si chiude coi bottoni
-      dialogClass: "ep-noclose",      // <<< nasconde la X solo qui
-      appendTo: $(doc.body),
-      position: { my: "center", at: "center", of: doc.defaultView || w.window },
-      open: function () {
-        try { $dlg.closest(".ui-dialog").addClass("ep-scheda-ui"); } catch (_) {}
-        debugLog("[vedischeda] dialog open", { title: title || "Scheda" });
-      },
-      close: function () {
-        debugLog("[vedischeda] dialog close", { title: title || "Scheda" });
-        try { $(this).dialog("destroy"); } catch (_) {}
-        $(this).remove();
-      }
-    });
-
-    // UX: drag dalla titlebar
-    try {
-      $dlg.closest(".ui-dialog").draggable("option", "handle", ".ui-dialog-titlebar");
     } catch (_) {}
   }
 
@@ -463,22 +572,28 @@
           const $wrap = $dlg.closest(".ui-dialog");
           $wrap.addClass("ep-scheda-ui").addClass("ep-scheda-viewer-ui");
 
-          // frame-like: drag solo titlebar
           try { $wrap.draggable("option", "handle", ".ui-dialog-titlebar"); } catch (_) {}
 
-          // Calcola altezza area contenuto (H - titlebar)
+          // altezza contenuto = H - titlebar
           const titleH = $wrap.find(".ui-dialog-titlebar").outerHeight(true) || 0;
           const borderFix = 2;
           const contentH = Math.max(100, H - titleH - borderFix);
 
-          // Applica al content e all'iframe
           $dlg.css({ padding: 0, overflow: "hidden" }).height(contentH);
 
           const iframeEl = $dlg.find("iframe.ep-scheda-iframe")[0];
           if (iframeEl) iframeEl.style.height = contentH + "px";
 
-          // Controlli: minimize + slider opacità + close con X
           addViewerTitleControls(doc, $, $dlg, $wrap, H);
+
+          // center robusto (chat/overflow)
+          setTimeout(() => forceDialogFixedCenter(doc, $dlg), 0);
+
+          try {
+            $(doc.defaultView).off("resize.epSchedaViewer").on("resize.epSchedaViewer", () => {
+              forceDialogFixedCenter(doc, $dlg);
+            });
+          } catch (_) {}
 
           debugLog("[vedischeda] viewer open fixed", { title: title || "Scheda PG", W, H, titleH, contentH });
         } catch (e) {
@@ -487,6 +602,7 @@
       },
       close: function () {
         debugLog("[vedischeda] viewer close", { title: title || "Scheda PG" });
+        try { $(doc.defaultView).off("resize.epSchedaViewer"); } catch (_) {}
         try { $(this).dialog("destroy"); } catch (_) {}
         $(this).remove();
       }
@@ -616,6 +732,7 @@
   // =========================
   w.vedischeda = function () {
     debugLog("[vedischeda] invoked");
+
     appendToUiWhenReady((doc) => {
       const $ = get$ForDoc(doc);
 
@@ -649,5 +766,13 @@
     });
   };
 
-})(window);
+  // =========================================================
+  // PATCH: publish su TOP (persistente tra reload interni dei frame)
+  // =========================================================
+  try {
+    if (w.top && w.top !== w) {
+      w.top.vedischeda = w.vedischeda;
+    }
+  } catch (_) {}
 
+})(window);

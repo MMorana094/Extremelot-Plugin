@@ -1,5 +1,5 @@
-// /script/features/bacheca.js
-// SRP: aprire e gestire SOLO il frame/overlay della Bacheca
+// /script/features/azioniFinestra.js
+// SRP: aprire e gestire SOLO il frame/overlay delle "Azioni nel Luogo"
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -7,18 +7,19 @@
 
   const debugLog = w.ExtremePlug?.debug?.debugLog || function () {};
 
-  const URL = "https://www.extremelot.eu/proc/forum/bacheca.asp";
-  const TITLE = "Bacheca";
+  const URL = "https://www.extremelot.eu/proc/azioni_21.asp";
+  const TITLE = "Azioni nel Luogo";
+  const THEME = "#6e0000";
 
-  const WRAP_ID = "ep-bacheca-wrap";
-  const IFRAME_ID = "ep-bacheca-iframe";
-  const BAR_ID = "ep-bacheca-bar";
-  const SLIDER_ID = "ep-bacheca-opacity";
-  const BTN_MIN_ID = "ep-bacheca-min";
-  const BTN_CLOSE_ID = "ep-bacheca-close";
-  const RESIZE_ID = "ep-bacheca-resize";
+  const WRAP_ID = "ep-azioni-wrap";
+  const IFRAME_ID = "ep-azioni-iframe";
+  const BAR_ID = "ep-azioni-bar";
+  const SLIDER_ID = "ep-azioni-opacity";
+  const BTN_MIN_ID = "ep-azioni-min";
+  const BTN_CLOSE_ID = "ep-azioni-close";
+  const RESIZE_ID = "ep-azioni-resize";
 
-  // Dimensione iniziale
+  // Dimensione iniziale (ridotta)
   const DEFAULT_W = 820;
   const DEFAULT_H = 520;
 
@@ -26,7 +27,7 @@
   const MIN_W = 380;
   const MIN_H = 160;
 
-  // Margini + snap
+  // Margini e snap
   const EDGE_PAD = 10;
   const SNAP_PX = 18;
 
@@ -69,14 +70,14 @@
     const doc = getTargetDocument();
     const win = doc?.defaultView || w;
 
-    debugLog("[bacheca] open()", { hasBody: !!doc?.body });
+    debugLog("[azioniFinestra] open()", { hasBody: !!doc?.body });
     if (!doc?.body) return;
 
     // toggle
     const existing = doc.getElementById(WRAP_ID);
     if (existing) {
       existing.remove();
-      debugLog("[bacheca] chiusa (toggle)");
+      debugLog("[azioniFinestra] chiuso (toggle)");
       return;
     }
 
@@ -86,7 +87,7 @@
     wrap.style.position = "fixed";
     wrap.style.zIndex = "2147483647";
     wrap.style.background = "#fff";
-    wrap.style.border = "1px solid rgba(0,0,0,0.35)";
+    wrap.style.border = `2px solid ${THEME}`;          // ✅ bordino theme
     wrap.style.boxShadow = "0 10px 40px rgba(0,0,0,0.35)";
     wrap.style.borderRadius = "8px";
     wrap.style.overflow = "hidden";
@@ -107,13 +108,13 @@
     wrap.style.width = w0 + "px";
     wrap.style.height = h0 + "px";
 
-    // stato per restore
+    // stato "aperto" per ripristino dopo minimize
     wrap.dataset.openLeft = wrap.style.left;
     wrap.dataset.openTop = wrap.style.top;
     wrap.dataset.openW = wrap.style.width;
     wrap.dataset.openH = wrap.style.height;
 
-    /* ================= TITLE BAR ================= */
+    /* ================= BAR ================= */
     const bar = doc.createElement("div");
     bar.id = BAR_ID;
     bar.style.height = "34px";
@@ -121,26 +122,28 @@
     bar.style.alignItems = "center";
     bar.style.justifyContent = "space-between";
     bar.style.padding = "0 10px";
-    bar.style.background = "#6e0000";
-    bar.style.borderBottom = "1px solid #fff";
+    bar.style.background = THEME;                      // ✅ titlebar theme
+    bar.style.borderBottom = `1px solid ${THEME}`;
     bar.style.font = "13px Arial";
     bar.style.userSelect = "none";
     bar.style.cursor = "move";
+    bar.style.color = "#fff";
 
     const title = doc.createElement("div");
     title.textContent = TITLE;
-    title.style.color = "#FFFFFF";
     title.style.fontWeight = "700";
     title.style.whiteSpace = "nowrap";
     title.style.overflow = "hidden";
     title.style.textOverflow = "ellipsis";
+    title.style.paddingRight = "10px";
 
     const controls = doc.createElement("div");
     controls.style.display = "flex";
     controls.style.alignItems = "center";
     controls.style.gap = "10px";
+    controls.style.color = "#fff";
 
-    /* ===== OPACITY ===== */
+    /* ====== OPACITY (PRIMO) ====== */
     const slider = doc.createElement("input");
     slider.id = SLIDER_ID;
     slider.type = "range";
@@ -148,12 +151,13 @@
     slider.max = "100";
     slider.value = "100";
     slider.style.width = "110px";
+    slider.style.cursor = "pointer";
 
     slider.addEventListener("input", () => {
       wrap.style.opacity = String((parseInt(slider.value, 10) || 100) / 100);
     });
 
-    /* ===== MINIMIZE ===== */
+    /* ====== MINIMIZE (SECONDO) ====== */
     const btnMin = doc.createElement("button");
     btnMin.id = BTN_MIN_ID;
     btnMin.textContent = "–";
@@ -162,8 +166,11 @@
     btnMin.style.background = "transparent";
     btnMin.style.fontSize = "22px";
     btnMin.style.cursor = "pointer";
+    btnMin.style.padding = "0 6px";
+    btnMin.style.marginTop = "-2px";
+    btnMin.style.color = "#fff";
 
-    /* ===== CLOSE ===== */
+    /* ====== CLOSE (TERZO) ====== */
     const btnClose = doc.createElement("button");
     btnClose.id = BTN_CLOSE_ID;
     btnClose.textContent = "✕";
@@ -172,13 +179,15 @@
     btnClose.style.background = "transparent";
     btnClose.style.fontSize = "18px";
     btnClose.style.cursor = "pointer";
+    btnClose.style.padding = "0 6px";
+    btnClose.style.color = "#fff";
 
     btnClose.addEventListener("click", () => {
       removeIfExists(doc);
-      debugLog("[bacheca] chiusa (X)");
+      debugLog("[azioniFinestra] chiuso (X)");
     });
 
-    // ordine: Opacity / Minimize / Close
+    /* ====== ORDINE RICHIESTO: Opacity / Minimize / Close ====== */
     controls.appendChild(slider);
     controls.appendChild(btnMin);
     controls.appendChild(btnClose);
@@ -197,72 +206,125 @@
     /* ================= RESIZE (bottom-right) ================= */
     const resizer = doc.createElement("div");
     resizer.id = RESIZE_ID;
+    resizer.title = "Ridimensiona";
     resizer.style.position = "absolute";
     resizer.style.right = "0";
     resizer.style.bottom = "0";
     resizer.style.width = "16px";
     resizer.style.height = "16px";
     resizer.style.cursor = "se-resize";
+    resizer.style.background =
+      "linear-gradient(225deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0) 60%)";
 
     resizer.addEventListener("mousedown", (e) => {
       if (wrap.dataset.minimized === "1") return;
       e.preventDefault?.();
+      e.stopPropagation?.();
 
       const startX = e.clientX;
       const startY = e.clientY;
       const rect = wrap.getBoundingClientRect();
 
+      const startW = rect.width;
+      const startH = rect.height;
+
       function onMove(ev) {
-        const newW = clamp(rect.width + (ev.clientX - startX), MIN_W, vw - EDGE_PAD);
-        const newH = clamp(rect.height + (ev.clientY - startY), MIN_H, vh - EDGE_PAD);
-        wrap.style.width = newW + "px";
-        wrap.style.height = newH + "px";
+        const vw2 = win.innerWidth || vw;
+        const vh2 = win.innerHeight || vh;
+
+        let newW = clamp(startW + (ev.clientX - startX), MIN_W, vw2 - EDGE_PAD);
+        let newH = clamp(startH + (ev.clientY - startY), MIN_H, vh2 - EDGE_PAD);
+
+        const maxW = vw2 - EDGE_PAD;
+        const maxH = vh2 - EDGE_PAD;
+        newW = snapToEdge(newW, maxW, SNAP_PX);
+        newH = snapToEdge(newH, maxH, SNAP_PX);
+
+        wrap.style.width = Math.round(newW) + "px";
+        wrap.style.height = Math.round(newH) + "px";
       }
 
       function onUp() {
         win.removeEventListener("mousemove", onMove, true);
         win.removeEventListener("mouseup", onUp, true);
+
+        wrap.dataset.openLeft = wrap.style.left;
+        wrap.dataset.openTop = wrap.style.top;
+        wrap.dataset.openW = wrap.style.width;
+        wrap.dataset.openH = wrap.style.height;
+
+        debugLog("[azioniFinestra] resize end", { w: wrap.style.width, h: wrap.style.height });
       }
 
       win.addEventListener("mousemove", onMove, true);
       win.addEventListener("mouseup", onUp, true);
     });
 
-    /* ================= DRAG + SNAP ================= */
+    /* ================= DRAG + SNAP (title bar) ================= */
     bar.addEventListener("mousedown", (e) => {
       if (wrap.dataset.minimized === "1") return;
-      if (e.target.closest(`#${SLIDER_ID}, #${BTN_MIN_ID}, #${BTN_CLOSE_ID}`)) return;
+
+      const t = e.target;
+      if (t && t.closest && t.closest(`#${BTN_MIN_ID}, #${BTN_CLOSE_ID}, #${SLIDER_ID}`)) return;
+
+      e.preventDefault?.();
 
       const startX = e.clientX;
       const startY = e.clientY;
+
       const rect = wrap.getBoundingClientRect();
+      const startLeft = pxToNum(wrap.style.left, rect.left);
+      const startTop = pxToNum(wrap.style.top, rect.top);
+
+      const curW = rect.width;
+      const curH = rect.height;
 
       function onMove(ev) {
-        let nl = rect.left + (ev.clientX - startX);
-        let nt = rect.top + (ev.clientY - startY);
+        const vw2 = win.innerWidth || 1200;
+        const vh2 = win.innerHeight || 800;
 
-        nl = snapToEdge(clamp(nl, EDGE_PAD, vw - rect.width - EDGE_PAD), EDGE_PAD, SNAP_PX);
-        nt = snapToEdge(clamp(nt, EDGE_PAD, vh - rect.height - EDGE_PAD), EDGE_PAD, SNAP_PX);
+        let nl = startLeft + (ev.clientX - startX);
+        let nt = startTop + (ev.clientY - startY);
 
-        wrap.style.left = nl + "px";
-        wrap.style.top = nt + "px";
+        nl = clamp(nl, EDGE_PAD, vw2 - curW - EDGE_PAD);
+        nt = clamp(nt, EDGE_PAD, vh2 - curH - EDGE_PAD);
+
+        const leftEdge = EDGE_PAD;
+        const topEdge = EDGE_PAD;
+        const rightEdge = vw2 - curW - EDGE_PAD;
+        const bottomEdge = vh2 - curH - EDGE_PAD;
+
+        nl = snapToEdge(nl, leftEdge, SNAP_PX);
+        nl = snapToEdge(nl, rightEdge, SNAP_PX);
+        nt = snapToEdge(nt, topEdge, SNAP_PX);
+        nt = snapToEdge(nt, bottomEdge, SNAP_PX);
+
+        wrap.style.left = Math.round(nl) + "px";
+        wrap.style.top = Math.round(nt) + "px";
       }
 
       function onUp() {
         win.removeEventListener("mousemove", onMove, true);
         win.removeEventListener("mouseup", onUp, true);
+
+        wrap.dataset.openLeft = wrap.style.left;
+        wrap.dataset.openTop = wrap.style.top;
+        wrap.dataset.openW = wrap.style.width;
+        wrap.dataset.openH = wrap.style.height;
+
+        debugLog("[azioniFinestra] drag end", { left: wrap.style.left, top: wrap.style.top });
       }
 
       win.addEventListener("mousemove", onMove, true);
       win.addEventListener("mouseup", onUp, true);
     });
 
-    /* ================= MINIMIZE ================= */
+    /* ================= MINIMIZE LOGIC ================= */
     btnMin.addEventListener("click", () => {
-      const min = wrap.dataset.minimized === "1";
-      wrap.dataset.minimized = min ? "0" : "1";
+      const isMin = wrap.dataset.minimized === "1";
+      wrap.dataset.minimized = isMin ? "0" : "1";
 
-      if (!min) {
+      if (!isMin) {
         wrap.dataset.openLeft = wrap.style.left;
         wrap.dataset.openTop = wrap.style.top;
         wrap.dataset.openW = wrap.style.width;
@@ -274,19 +336,28 @@
         wrap.style.bottom = "12px";
         wrap.style.width = "420px";
         wrap.style.height = "34px";
+
         iframe.style.display = "none";
         resizer.style.display = "none";
+        bar.style.cursor = "default";
+
         btnMin.textContent = "▢";
+        btnMin.title = "Ripristina";
       } else {
         wrap.style.right = "";
         wrap.style.bottom = "";
-        wrap.style.left = wrap.dataset.openLeft;
-        wrap.style.top = wrap.dataset.openTop;
-        wrap.style.width = wrap.dataset.openW;
-        wrap.style.height = wrap.dataset.openH;
+
+        wrap.style.left = wrap.dataset.openLeft || (left0 + "px");
+        wrap.style.top = wrap.dataset.openTop || (top0 + "px");
+        wrap.style.width = wrap.dataset.openW || (w0 + "px");
+        wrap.style.height = wrap.dataset.openH || (h0 + "px");
+
         iframe.style.display = "block";
         resizer.style.display = "block";
+        bar.style.cursor = "move";
+
         btnMin.textContent = "–";
+        btnMin.title = "Minimizza";
       }
     });
 
@@ -296,9 +367,9 @@
     wrap.appendChild(resizer);
     doc.body.appendChild(wrap);
 
-    debugLog("[bacheca] frame pronto");
+    debugLog("[azioniFinestra] frame pronto");
   }
 
   // export pubblico
-  w.ExtremePlug.features.bacheca = { open };
+  w.ExtremePlug.features.azioniFinestra = { open };
 })(window);
