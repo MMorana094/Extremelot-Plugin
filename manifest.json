@@ -50,6 +50,8 @@
         "script/ui/dialogs.js",
         "script/ui/windows.js",
         "script/ui/menu.js",
+        "script/events/bindings.js",
+        "script/main.js",
         "script/features/mappa.js",
         "script/features/scheda.js",
         "script/features/bacheca.js",
@@ -62,8 +64,9 @@
         "script/features/lente.js",
         "script/features/regole.js",
         "script/features/azioniFinestra.js",
-        "script/events/bindings.js",
-        "script/main.js"
+        "script/features/chiedove.js",
+        "script/features/simboli.js",
+        "script/features/collegati.js" 
       ]
     }
   ]

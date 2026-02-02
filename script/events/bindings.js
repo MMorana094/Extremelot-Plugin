@@ -1,4 +1,4 @@
-// script/events/bindings.js 
+// script/events/bindings.js
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -27,6 +27,15 @@
       w.finestra?.(id, title, url, opts || "width=950,height=550");
     }
 
+    // Helper: chiama feature in modo sicuro
+    // path esempio: ["features","simboli","open"]
+    function callFeature(pathArr, fallbackFn) {
+      let cur = w.ExtremePlug;
+      for (const k of pathArr) cur = cur?.[k];
+      if (typeof cur === "function") return cur();
+      if (typeof fallbackFn === "function") return fallbackFn();
+    }
+
     function handlerById(id) {
       switch (id) {
         case "apri_editor":
@@ -38,65 +47,59 @@
         case "salva_chat":
           return () => {
             debugLog("[BIND] click salva_chat");
-            const run = w.ExtremePlug?.features?.salvaChat?.run;
-            if (typeof run === "function") return run();
-            return w.salvaChat?.(); 
+            // prima prova feature nuova, poi fallback vecchio
+            return callFeature(["features", "salvaChat", "run"], () => w.salvaChat?.());
           };
-
 
         case "scelto_forum":
           return () => {
             debugLog("[BIND] click bacheca");
-            w.ExtremePlug?.features?.bacheca?.open?.();
+            return callFeature(["features", "bacheca", "open"]);
           };
 
-case "leggiposta":
-  return () => {
-    debugLog("[BIND] click leggi posta");
-    w.ExtremePlug?.features?.posta?.open?.();
-  };
+        case "leggiposta":
+          return () => {
+            debugLog("[BIND] click leggi posta");
+            return callFeature(["features", "posta", "open"]);
+          };
 
-case "scriviposta":
-  return () => {
-    debugLog("[BIND] click scrivi posta");
-    w.ExtremePlug?.features?.posta?.scrivi?.();
-  };
+        case "scriviposta":
+          return () => {
+            debugLog("[BIND] click scrivi posta");
+            return callFeature(["features", "posta", "scrivi"]);
+          };
 
         case "gest_Chat":
           return () => {
             debugLog("[BIND] click gestionale (gest_Chat)");
-            const opened = w.ExtremePlug?.features?.gestionale?.open;
-            if (typeof opened === "function") return opened();
-            return w.apriGestionale?.();
+            // prima feature nuova, poi fallback vecchio
+            return callFeature(["features", "gestionale", "open"], () => w.apriGestionale?.());
           };
 
         case "banca":
           return () => {
             debugLog("[BIND] click banca");
-            const open = w.ExtremePlug?.features?.banca?.open;
-            if (typeof open === "function") return open();
-            return w.apriBanca?.(); 
+            return callFeature(["features", "banca", "open"], () => w.apriBanca?.());
           };
 
         case "lotInforma":
           return () => {
             debugLog("[BIND] click lotInforma");
-            const open = w.ExtremePlug?.features?.lotInforma?.open;
-            if (typeof open === "function") return open();
-            return w.apriLotInforma?.();
+            return callFeature(["features", "lotInforma", "open"], () => w.apriLotInforma?.());
           };
 
         case "mappaTest":
           return () => {
             debugLog("[BIND] click mappa");
-            return w.ExtremePlug?.features?.mappa?.open?.();
+            return callFeature(["features", "mappa", "open"]);
           };
 
         case "regole":
           return () => {
             debugLog("[BIND] click regole");
-            const open = w.ExtremePlug?.features?.regole?.open;
-            if (typeof open === "function") return open();
+            const did = callFeature(["features", "regole", "open"]);
+            if (did !== undefined) return;
+
             // fallback vecchio comportamento, se serve
             if (!C) return;
             const link = C.LOTNEW_BASE + "leggi/leggi.asp";
@@ -106,13 +109,32 @@ case "scriviposta":
         case "azioniFinestra":
           return () => {
             debugLog("[BIND] click azioniFinestra");
-            w.ExtremePlug?.features?.azioniFinestra?.open?.();
+            return callFeature(["features", "azioniFinestra", "open"]);
           };
 
         case "descLuogo":
           return () => {
             debugLog("[BIND] click descLuogo");
-            w.ExtremePlug?.features?.lente?.open?.();
+            return callFeature(["features", "lente", "open"]);
+          };
+
+        // --- NUOVI OVERLAY ---
+        case "aprisimboli":
+          return () => {
+            debugLog("[BIND] click aprisimboli");
+            return callFeature(["features", "simboli", "open"]);
+          };
+
+        case "dovegioco":
+          return () => {
+            debugLog("[BIND] click dovegioco");
+            return callFeature(["features", "chiedove", "open"]);
+          };
+
+        case "apri_online":
+          return () => {
+            debugLog("[BIND] click apri_online");
+            return callFeature(["features", "collegati", "open"]);
           };
 
         default:
@@ -136,8 +158,10 @@ case "scriviposta":
         const run = handlerById(id);
         if (!run) return;
 
+        // blocca TUTTO (molti handler legacy catturano click in capture)
         e.preventDefault?.();
         e.stopPropagation?.();
+        e.stopImmediatePropagation?.();
 
         try {
           run();
@@ -145,7 +169,7 @@ case "scriviposta":
           console.error("[ExtremePlug][bindings] handler error for:", id, err);
         }
       },
-      true 
+      true
     );
 
     debugLog("[BIND] attached (native)");

@@ -25,3 +25,6 @@ Il plugin si integra nella pagina principale di Extremelot (_index2.htm) e aggiu
 
 ---
 Questo plugin è in fase di refactor e potrebbe essere soggetto a modifiche.
+
+## TO DO
+1) Rendere il menù spostabile (Richiesta da: Ehinetor)

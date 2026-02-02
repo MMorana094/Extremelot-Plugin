@@ -1,6 +1,4 @@
-// script/ui/menu.js  (SAFE MODE)
-// Niente MutationObserver. Niente try/catch silenziosi. Throttle forte.
-// Compatibile con bindings.js via ExtremePlug.menu._lastTargetDoc
+// script/ui/menu.js
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -12,25 +10,16 @@
     try {
       return !!doc.querySelector("frameset") || !!doc.querySelector("frame[name='result']");
     } catch (e) {
-      console.error("[ExtremePlug][menu] isFramesetHostDocument error:", e);
+      debugLog("[MENU] isFramesetHostDocument error:", e);
       return false;
     }
   }
 
-  function getResultTargetWindow(resultWin) {
-    // Se result è frameset interno, preferisci "testo", altrimenti result stesso
-    const doc = resultWin?.document;
-    if (!doc) return null;
-
-    const hasFrames = !!doc.querySelector("frameset") || !!doc.querySelector("frame");
-    if (!hasFrames) return resultWin;
-
-    const inner = resultWin.frames?.["testo"];
-    if (inner?.document) return inner;
-
-    if (resultWin.frames?.length) return resultWin.frames[0];
-
-    return resultWin;
+  function getScelteTargetWindow() {
+    // Nel frameset LOT spesso esiste top.scelte come frame con i bottoni/azioni
+    const sw = w.top?.scelte;
+    if (sw?.document) return sw;
+    return null;
   }
 
   function ensureFontAwesome(doc) {
@@ -57,11 +46,11 @@
         display:flex; flex-wrap:wrap; gap:6px;
         background:rgba(255,255,255,.92);
         border:1px solid #ccc;
-        padding:6px; border-radius:6px;
+        padding:1px; border-radius:6px;
       }
 
       #altroframeperaltraroba .comando{
-        width:30px; height:30px; line-height:30px;
+        width:20px; height:20px; line-height:20px;
         text-align:center; cursor:pointer;
         background:#fff; border:1px solid #bbb;
         border-radius:4px; user-select:none;
@@ -70,7 +59,7 @@
         font-size:16px;
       }
       #altroframeperaltraroba .comando:hover{ background:#f3f3f3; }
-      #altroframeperaltraroba .comando i{ line-height:30px; }
+      #altroframeperaltraroba .comando i{ line-height:20px; }
     `;
     doc.head.appendChild(style);
   }
@@ -97,38 +86,37 @@
     const bar = doc.getElementById("altroframeperaltraroba");
     if (!bar) return;
 
-    // evita reiniezione continua
     if (bar.__extremeplugFilled) return;
     bar.__extremeplugFilled = true;
 
     bar.innerHTML = `
-      <div class="comando" id="descLuogo" title="Lente / Descrizione chat"><i class="fa fa-search"></i></div>
-      <div class="comando" id="azioniFinestra" title="Azioni nel luogo"><i class="fa fa-bolt"></i></div>
-      <div class="comando" id="miascheda" title="Scheda PG"><i class="fa fa-id-card"></i></div>
-      <div class="comando" id="apri_editor" title="Editor azione"><i class="fa fa-commenting"></i></div>
       <div class="comando" id="salva_chat" title="Salva chat"><i class="fa fa-save"></i></div>
-      <div class="comando" id="scelto_forum" title="Bacheca"><i class="fa fa-comments"></i></div>
-      <div class="comando" id="leggiposta" title="Leggi posta"><i class="fa fa-envelope-open"></i></div>
-      <div class="comando" id="scriviposta" title="Scrivi posta"><i class="fa fa-paper-plane"></i></div>
-      <div class="comando" id="gest_Chat" title="Gestionale"><i class="fa fa-bookmark"></i></div>
-      <div class="comando" id="regole" title="Regolamenti"><i class="fa fa-gavel"></i></div>
-      <div class="comando" id="lotInforma" title="Lot Informa"><i class="fa fa-newspaper-o"></i></div>
-      <div class="comando" id="banca" title="Banca"><i class="fa fa-money"></i></div>
+      <div class='comando' id='aprisimboli' title='Apri i simboli'><i class='fa fa-star'></i></div>
+      <div class="comando" id="descLuogo" title="Lente / Descrizione chat"><img src='http://www.extremelot.eu/proc/img/_descr.gif'></div>
+      <div class='comando' id='dovegioco' title='Dove vuoi giocare oggi?'><i class='fa fa-hourglass'></i></div>
+      <div class="comando" id="azioniFinestra" title="Azioni nel luogo"><i class="fa fa-bolt"></i></div>
       <div class="comando" id="mappaTest" title="Mappa testuale"><i class="fa fa-map"></i></div>
+      <div class="comando" id="miascheda" title="Scheda PG"><i class="fa fa-id-card"></i></div>
+      <div class="comando" id="lotInforma" title="Lot Informa"><i class="fa fa-newspaper-o"></i></div>
+      <div class="comando" id="scelto_forum" title="Bacheca"><i class="fa fa-comments"></i></div>
+      <div class='comando' id='apri_online' title='Elenco online'><i class='fa fa-users'></i></div>
+      <div class="comando" id="leggiposta" title="Leggi posta"><i class="fa fa-envelope-open"></i></div>
+      <div class="comando" id="regole" title="Regolamenti"><i class="fa fa-gavel"></i></div>
+      <div class="comando" id="scriviposta" title="Scrivi posta"><i class="fa fa-paper-plane"></i></div>
+      <div class="comando" id="banca" title="Banca"><i class="fa fa-money"></i></div>
+      <div class="comando" id="apri_editor" title="Editor azione"><i class="fa fa-commenting"></i></div>
+      <div class="comando" id="gest_Chat" title="Gestionale"><i class="fa fa-bookmark"></i></div>
     `;
 
-    debugLog("[MENU] injected (safe)");
+    debugLog("[MENU] injected (scelte)");
   }
 
   function renderOnce() {
-    // SOLO top window, SOLO frameset host
     if (w.top !== w) return;
     if (!isFramesetHostDocument(w.document)) return;
 
-    const resultWin = w.top?.result;
-    if (!resultWin?.document) return;
-
-    const targetWin = getResultTargetWindow(resultWin);
+    // ✅ target: frame "scelte"
+    const targetWin = getScelteTargetWindow();
     if (!targetWin?.document) return;
 
     const doc = targetWin.document;
@@ -136,7 +124,6 @@
 
     // salva doc target per bindings
     w.ExtremePlug.menu._lastTargetDoc = doc;
-    // forza rebind sul doc nuovo/riscritto
     doc.__extremeplugBound = false;
 
     ensureFontAwesome(doc);
@@ -144,7 +131,6 @@
     ensureContainer(doc);
     fillMenuButtons(doc);
 
-    // rebind eventi
     if (typeof w.setupEventiPlugin === "function") {
       w.setupEventiPlugin();
     }
@@ -157,17 +143,16 @@
     let last = 0;
     const tick = () => {
       const now = Date.now();
-      if (now - last < 800) return; // throttle forte
+      if (now - last < 800) return;
       last = now;
 
       try {
         renderOnce();
       } catch (e) {
-        console.error("[ExtremePlug][menu] renderOnce error:", e);
+        debugLog("[MENU] renderOnce error:", e);
       }
     };
 
-    // parte “tardi” per non interferire col load del frameset
     setTimeout(() => {
       tick();
       setInterval(tick, 900);
