@@ -52,7 +52,6 @@
       #altroframeperaltraroba .comando{
         width:20px; height:20px; line-height:20px;
         text-align:center; cursor:pointer;
-        background:#fff; border:1px solid #bbb;
         border-radius:4px; user-select:none;
         box-shadow:0 0 2px rgba(0,0,0,.15);
         font-family:Arial,sans-serif;

@@ -32,6 +32,11 @@
         "https://www.extremelot.eu/lotnew/index2.asp*",
         "https://extremelot.eu/lotnew/_index2.asp*",
         "https://extremelot.eu/lotnew/index2.asp*",
+        "https://www.extremelot.eu/lotnew/_index2.htm*",
+        "https://www.extremelot.eu/lotnew/index2.htm*",
+        "https://extremelot.eu/lotnew/_index2.htm*",
+        "https://extremelot.eu/lotnew/index2.htm*",
+        "https://www.extremelot.eu/lotnew/*",
         "https://extremelot.eu/lotnew/*"
       ],
       "css": [
