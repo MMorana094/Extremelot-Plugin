@@ -4,12 +4,46 @@
   w.ExtremePlug = w.ExtremePlug || {};
   const debugLog = w.ExtremePlug?.debug?.debugLog || function () {};
 
-  function getTargetDocument() {
+  // DOC dove sta il menu (frame scelte)
+  function getMenuDocument() {
+    const sw = w.top?.scelte;
+    if (sw?.document?.body) return sw.document;
+
+    // fallback (se per qualche motivo scelte non esiste)
     const cached = w.ExtremePlug?.menu?._lastTargetDoc;
     if (cached?.body) return cached;
 
     const resultWin = w.top?.result;
     if (resultWin?.document?.body) return resultWin.document;
+
+    return null;
+  }
+
+  // DOC dove devono agire le feature (frame result -> testo)
+  function getActionTargetDocument() {
+    const resultWin = w.top?.result;
+    const doc = resultWin?.document;
+    if (!doc) return null;
+
+    // Se result NON è un frameset, usa direttamente result.document
+    let hasFrames = false;
+    try {
+      hasFrames = !!doc.querySelector("frameset") || !!doc.querySelector("frame");
+    } catch (_) {}
+
+    if (!hasFrames) {
+      if (doc.body) return doc;
+      return null;
+    }
+
+    // Se result è frameset, preferisci il frame "testo"
+    const inner = resultWin.frames?.["testo"];
+    if (inner?.document?.body) return inner.document;
+
+    // fallback: primo frame disponibile
+    if (resultWin.frames?.length && resultWin.frames[0]?.document?.body) {
+      return resultWin.frames[0].document;
+    }
 
     return null;
   }
@@ -28,7 +62,6 @@
     }
 
     // Helper: chiama feature in modo sicuro
-    // path esempio: ["features","simboli","open"]
     function callFeature(pathArr, fallbackFn) {
       let cur = w.ExtremePlug;
       for (const k of pathArr) cur = cur?.[k];
@@ -47,7 +80,6 @@
         case "salva_chat":
           return () => {
             debugLog("[BIND] click salva_chat");
-            // prima prova feature nuova, poi fallback vecchio
             return callFeature(["features", "salvaChat", "run"], () => w.salvaChat?.());
           };
 
@@ -72,7 +104,6 @@
         case "gest_Chat":
           return () => {
             debugLog("[BIND] click gestionale (gest_Chat)");
-            // prima feature nuova, poi fallback vecchio
             return callFeature(["features", "gestionale", "open"], () => w.apriGestionale?.());
           };
 
@@ -100,7 +131,6 @@
             const did = callFeature(["features", "regole", "open"]);
             if (did !== undefined) return;
 
-            // fallback vecchio comportamento, se serve
             if (!C) return;
             const link = C.LOTNEW_BASE + "leggi/leggi.asp";
             openFinestra("regoleLot", "Regolamenti", C.proxyUrl(link));
@@ -118,7 +148,7 @@
             return callFeature(["features", "lente", "open"]);
           };
 
-        // --- NUOVI OVERLAY ---
+        // --- OVERLAY ---
         case "aprisimboli":
           return () => {
             debugLog("[BIND] click aprisimboli");
@@ -158,7 +188,6 @@
         const run = handlerById(id);
         if (!run) return;
 
-        // blocca TUTTO (molti handler legacy catturano click in capture)
         e.preventDefault?.();
         e.stopPropagation?.();
         e.stopImmediatePropagation?.();
@@ -166,19 +195,35 @@
         try {
           run();
         } catch (err) {
-          console.error("[ExtremePlug][bindings] handler error for:", id, err);
+          debugLog("[BIND] handler error for:", id, err);
         }
       },
       true
     );
 
-    debugLog("[BIND] attached (native)");
+    debugLog("[BIND] attached (native) on menu doc");
   }
 
   w.setupEventiPlugin = function () {
-    const doc = getTargetDocument();
-    if (!doc?.body) return;
+    // 1) bind sul documento dove vive il menu (scelte)
+    const menuDoc = getMenuDocument();
+    if (!menuDoc?.body) return;
 
-    bindNativeToDocument(doc);
+    // 2) aggiorna SEMPRE il target delle azioni al result/testo
+    const targetDoc = getActionTargetDocument();
+    if (targetDoc?.body) {
+      w.ExtremePlug.menu = w.ExtremePlug.menu || {};
+      w.ExtremePlug.menu._lastTargetDoc = targetDoc;
+
+      // se altrove usi questo flag, lo resettiamo (coerente col tuo menu.js)
+      targetDoc.__extremeplugBound = false;
+
+      debugLog("[BIND] action target set to result/testo doc");
+    } else {
+      debugLog("[BIND] action target NOT found (result/testo)");
+    }
+
+    // 3) attacca listener ai click del menu
+    bindNativeToDocument(menuDoc);
   };
 })(window);
