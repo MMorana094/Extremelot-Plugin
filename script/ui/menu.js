@@ -44,8 +44,6 @@
 
       #altroframeperaltraroba{
         display:flex; flex-wrap:wrap; gap:6px;
-        background:rgba(255,255,255,.92);
-        border:1px solid #ccc;
         padding:1px; border-radius:6px;
       }
 
@@ -89,22 +87,22 @@
     bar.__extremeplugFilled = true;
 
     bar.innerHTML = `
-      <div class="comando" id="salva_chat" title="Salva chat"><i class="fa fa-save"></i></div>
-      <div class='comando' id='aprisimboli' title='Apri i simboli'><i class='fa fa-star'></i></div>
+      <div class="comando" id="salva_chat" title="Salva chat"><img src='https://tagete.altervista.org/plugin/salva.png'></div>
+      <div class='comando' id='aprisimboli' title='Apri i simboli'><img src='https://tagete.altervista.org/plugin/simboli.png'></div>
       <div class="comando" id="descLuogo" title="Lente / Descrizione chat"><img src='http://www.extremelot.eu/proc/img/_descr.gif'></div>
-      <div class='comando' id='dovegioco' title='Dove vuoi giocare oggi?'><i class='fa fa-hourglass'></i></div>
-      <div class="comando" id="azioniFinestra" title="Azioni nel luogo"><i class="fa fa-bolt"></i></div>
-      <div class="comando" id="mappaTest" title="Mappa testuale"><i class="fa fa-map"></i></div>
-      <div class="comando" id="miascheda" title="Scheda PG"><i class="fa fa-id-card"></i></div>
-      <div class="comando" id="lotInforma" title="Lot Informa"><i class="fa fa-newspaper-o"></i></div>
-      <div class="comando" id="scelto_forum" title="Bacheca"><i class="fa fa-comments"></i></div>
-      <div class='comando' id='apri_online' title='Elenco online'><i class='fa fa-users'></i></div>
-      <div class="comando" id="leggiposta" title="Leggi posta"><i class="fa fa-envelope-open"></i></div>
-      <div class="comando" id="regole" title="Regolamenti"><i class="fa fa-gavel"></i></div>
-      <div class="comando" id="scriviposta" title="Scrivi posta"><i class="fa fa-paper-plane"></i></div>
-      <div class="comando" id="banca" title="Banca"><i class="fa fa-money"></i></div>
-      <div class="comando" id="apri_editor" title="Editor azione"><i class="fa fa-commenting"></i></div>
-      <div class="comando" id="gest_Chat" title="Gestionale"><i class="fa fa-bookmark"></i></div>
+      <div class='comando' id='dovegioco' title='Dove vuoi giocare oggi?'><img src='https://tagete.altervista.org/plugin/dove.png'></div>
+      <div class="comando" id="azioniFinestra" title="Azioni nel luogo"><img src='https://tagete.altervista.org/plugin/azioni.png'></i></div>
+      <div class="comando" id="mappaTest" title="Mappa testuale"><img src='https://tagete.altervista.org/plugin/mappa.png'></div>
+      <div class="comando" id="miascheda" title="Scheda PG"><img src='https://tagete.altervista.org/plugin/scheda.png'></div>
+      <div class="comando" id="lotInforma" title="Lot Informa"><img src='https://tagete.altervista.org/plugin/informa.png'></div>
+      <div class="comando" id="scelto_forum" title="Bacheca"><img src='https://tagete.altervista.org/plugin/bacheca.png'></div>
+      <div class='comando' id='apri_online' title='Elenco online'><img src='https://tagete.altervista.org/plugin/presenti.png'></div>
+      <div class="comando" id="leggiposta" title="Leggi posta"><img src='https://tagete.altervista.org/plugin/postai.png'></div>
+      <div class="comando" id="regole" title="Regolamenti"><img src='https://tagete.altervista.org/plugin/regole.png'></div>
+      <div class="comando" id="scriviposta" title="Scrivi posta"><img src='https://tagete.altervista.org/plugin/scrivi.png'></div>
+      <div class="comando" id="banca" title="Banca"><img src='https://tagete.altervista.org/plugin/banca.png'></div>
+      <div class="comando" id="apri_editor" title="Editor azione"><img src='https://tagete.altervista.org/plugin/chat.png'></div>
+      <div class="comando" id="gest_Chat" title="Gestionale"><img src='https://tagete.altervista.org/plugin/gestione.png'></div>
     `;
 
     debugLog("[MENU] injected (scelte)");
