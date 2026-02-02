@@ -1,6 +1,4 @@
-// script/events/bindings.js (SAFE - NATIVE)
-// Nessuna dipendenza da jQuery. Event delegation nativa sul documento target.
-// Compatibile con menu.js via ExtremePlug.menu._lastTargetDoc
+// script/events/bindings.js 
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -42,8 +40,9 @@
             debugLog("[BIND] click salva_chat");
             const run = w.ExtremePlug?.features?.salvaChat?.run;
             if (typeof run === "function") return run();
-            return w.salvaChat?.(); // fallback legacy
+            return w.salvaChat?.(); 
           };
+
 
         case "scelto_forum":
           return () => {
@@ -51,14 +50,17 @@
             w.ExtremePlug?.features?.bacheca?.open?.();
           };
 
-        case "leggiposta":
-          return () => {
-            debugLog("[BIND] click leggiposta");
-            w.ExtremePlug?.features?.leggiposta?.open?.();
-          };
+case "leggiposta":
+  return () => {
+    debugLog("[BIND] click leggi posta");
+    w.ExtremePlug?.features?.posta?.open?.();
+  };
 
-        case "scriviposta":
-          return () => w.scriviposta?.();
+case "scriviposta":
+  return () => {
+    debugLog("[BIND] click scrivi posta");
+    w.ExtremePlug?.features?.posta?.scrivi?.();
+  };
 
         case "gest_Chat":
           return () => {
@@ -73,7 +75,7 @@
             debugLog("[BIND] click banca");
             const open = w.ExtremePlug?.features?.banca?.open;
             if (typeof open === "function") return open();
-            return w.apriBanca?.(); // fallback vecchio
+            return w.apriBanca?.(); 
           };
 
         case "lotInforma":
@@ -81,7 +83,7 @@
             debugLog("[BIND] click lotInforma");
             const open = w.ExtremePlug?.features?.lotInforma?.open;
             if (typeof open === "function") return open();
-            return w.apriLotInforma?.(); // fallback vecchio
+            return w.apriLotInforma?.();
           };
 
         case "mappaTest":
@@ -143,7 +145,7 @@
           console.error("[ExtremePlug][bindings] handler error for:", id, err);
         }
       },
-      true // capture: più robusto nei frames
+      true 
     );
 
     debugLog("[BIND] attached (native)");
@@ -153,8 +155,6 @@
     const doc = getTargetDocument();
     if (!doc?.body) return;
 
-    // menu.js safe mette doc.__extremeplugBound=false quando cambia doc,
-    // qui usiamo un nostro flag separato:
     bindNativeToDocument(doc);
   };
 })(window);
