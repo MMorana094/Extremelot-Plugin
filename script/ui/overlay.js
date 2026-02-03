@@ -107,7 +107,7 @@
 
     function resolveUrl() {
       try {
-        return (typeof cfg.url === "function") ? cfg.url() : String(cfg.url || "");
+        return typeof cfg.url === "function" ? cfg.url() : String(cfg.url || "");
       } catch (e) {
         debugLog("[overlay] resolveUrl error", e);
         return "";
@@ -157,8 +157,16 @@
       const w0 = clamp(DEFAULT_W, MIN_W, vw - 2 * EDGE_PAD);
       const h0 = clamp(DEFAULT_H, MIN_H, vh - 2 * EDGE_PAD);
 
-      const left0 = clamp(Math.round((vw - w0) / 2), EDGE_PAD, Math.max(EDGE_PAD, vw - w0 - EDGE_PAD));
-      const top0 = clamp(Math.round((vh - h0) / 2), EDGE_PAD, Math.max(EDGE_PAD, vh - h0 - EDGE_PAD));
+      const left0 = clamp(
+        Math.round((vw - w0) / 2),
+        EDGE_PAD,
+        Math.max(EDGE_PAD, vw - w0 - EDGE_PAD)
+      );
+      const top0 = clamp(
+        Math.round((vh - h0) / 2),
+        EDGE_PAD,
+        Math.max(EDGE_PAD, vh - h0 - EDGE_PAD)
+      );
 
       wrap.style.left = left0 + "px";
       wrap.style.top = top0 + "px";
@@ -260,12 +268,23 @@
       resizer.style.width = "16px";
       resizer.style.height = "16px";
       resizer.style.cursor = "nwse-resize";
-      resizer.style.background = "linear-gradient(135deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.25) 100%)";
+      resizer.style.background =
+        "linear-gradient(135deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.25) 100%)";
 
       /* ================= EVENTS: CLOSE/OPACITY ================= */
       btnClose.addEventListener("click", () => wrap.remove());
       slider.addEventListener("input", () => {
         wrap.style.opacity = String(slider.value);
+      });
+
+      // ✅ FIX: impedisci che lo slider triggeri il drag (quando useresti bar come handle)
+      // (qui è utile se in futuro sposti lo slider nella titlebar "drag handle" o simili)
+      const stopDragFromControls = (e) => {
+        try { e.stopPropagation(); } catch (_) {}
+        try { e.stopImmediatePropagation(); } catch (_) {}
+      };
+      ["pointerdown", "mousedown", "touchstart"].forEach((evt) => {
+        slider.addEventListener(evt, stopDragFromControls, true);
       });
 
       /* ================= DRAG + SNAP ================= */
@@ -388,10 +407,10 @@
           wrap.style.right = "";
           wrap.style.bottom = "";
 
-          wrap.style.left = wrap.dataset.openLeft || (left0 + "px");
-          wrap.style.top = wrap.dataset.openTop || (top0 + "px");
-          wrap.style.width = wrap.dataset.openW || (w0 + "px");
-          wrap.style.height = wrap.dataset.openH || (h0 + "px");
+          wrap.style.left = wrap.dataset.openLeft || left0 + "px";
+          wrap.style.top = wrap.dataset.openTop || top0 + "px";
+          wrap.style.width = wrap.dataset.openW || w0 + "px";
+          wrap.style.height = wrap.dataset.openH || h0 + "px";
 
           iframe.style.display = "block";
           resizer.style.display = "block";
@@ -642,6 +661,50 @@
 
       $bar.append(controls);
 
+      // =========================================================
+      // ✅ FIX: impedisci che lo slider trascini tutto il dialog
+      // (jQuery UI dialog è draggable dalla titlebar: lo slider è dentro la titlebar)
+      // =========================================================
+      const stopDragFromControls = (e) => {
+        try { e.stopPropagation(); } catch (_) {}
+        try { e.stopImmediatePropagation(); } catch (_) {}
+        return false;
+      };
+
+      // Blocca eventi già in capture (più affidabile)
+      ["pointerdown", "mousedown", "touchstart"].forEach((evt) => {
+        op.addEventListener(evt, stopDragFromControls, true);
+        opWrap.addEventListener(evt, stopDragFromControls, true);
+      });
+
+      // Inoltre: dì a jQuery UI draggable di "cancellare" il drag quando parti dai controlli
+      try {
+        if (typeof $wrap.draggable === "function") {
+          const cancelSel = [
+            ".ep-title-controls",
+            ".ep-opacity-wrap",
+            "input.ep-opacity",
+            "input",
+            "button",
+            "select",
+            "textarea",
+            "a",
+          ].join(",");
+
+          if ($wrap.data("ui-draggable") || $wrap.data("draggable")) {
+            $wrap.draggable("option", "cancel", cancelSel);
+          } else {
+            setTimeout(() => {
+              try {
+                if ($wrap.data("ui-draggable") || $wrap.data("draggable")) {
+                  $wrap.draggable("option", "cancel", cancelSel);
+                }
+              } catch (_) {}
+            }, 0);
+          }
+        }
+      } catch (_) {}
+
       const stateKey = "ep_jqui_state_" + String(key || "dlg");
       const win = doc.defaultView || w.window;
 
@@ -683,7 +746,6 @@
         st.opacity = v;
         $wrap.data(stateKey, st);
       });
-      op.addEventListener("mousedown", (e) => { try { e.stopPropagation(); } catch (_) {} });
 
       // minimize
       btnMin.addEventListener("click", (e) => {
@@ -708,7 +770,7 @@
           $wrap.css({
             position: "fixed",
             width: minWidth + "px",
-            height: (titleH + 2) + "px",
+            height: titleH + 2 + "px",
             left: Math.max(pad, vw - minWidth - pad) + "px",
             top: Math.max(pad, vh - (titleH + 2) - pad) + "px",
           });
@@ -740,8 +802,6 @@
         }
       });
 
-      // ✅ NON spostiamo più la X nativa (evita doppioni)
-
       // salva stato iniziale
       setTimeout(() => {
         try {
@@ -755,5 +815,4 @@
       debugLog("[overlay.jqui] addTitleControls error", { err: String(e?.message || e) });
     }
   };
-
 })(window);
