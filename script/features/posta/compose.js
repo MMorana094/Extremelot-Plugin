@@ -1,5 +1,9 @@
 // script/features/compose.js
 // Posta - Composer (scrivi/rispondi) separato da posta.js
+// Dipendenze:
+//  - script/ui/overlay.js
+//  - script/ui/getUiDoc.js (facoltativo, per get$ForDoc)
+//  - script/features/posta.ui.js   ✅ (preset UI condiviso)
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -20,7 +24,13 @@
   // Frame name richiesto da LOT
   const REQUIRED_FRAME_NAME = "bdx";
 
+  function getUiHostAPI() {
+    return w.ExtremePlug?.ui || w.top?.ExtremePlug?.ui || null;
+  }
+
   function get$ForDoc(doc) {
+    const ui = getUiHostAPI();
+    if (ui?.get$ForDoc) return ui.get$ForDoc(doc);
     try {
       return doc?.defaultView?.jQuery || w.top?.jQuery || w.jQuery || null;
     } catch (_) {
@@ -28,40 +38,8 @@
     }
   }
 
-  function getOverlayJqui() {
-    return w.ExtremePlug?.ui?.overlay?.jqui || w.top?.ExtremePlug?.ui?.overlay?.jqui || null;
-  }
-
-  function ensurePostaOverlayUi(doc, $, $dlg, key, opts) {
-    const jqui = getOverlayJqui();
-    if (!jqui) {
-      debugLog("[POSTA][compose] overlay.jqui mancante: carica /script/ui/overlay.js prima dei features");
-      return;
-    }
-
-    jqui.ensureDialogStyle(doc, {
-      ns: "posta",
-      dialogClass: "ep-posta-ui",
-      bg: "#f8e9aa",
-      border: "#6e0000",
-      titleBg: "#6e0000",
-    });
-
-    // ✅ iframe fill centralizzato
-    jqui.ensureIframeFill(doc, {
-      ns: "posta",
-      iframeClass: "ep-posta-iframe",
-      dialogClass: "ep-posta-ui",
-      bg: "#f8e9aa",
-    });
-
-    try {
-      const $wrap = $dlg.closest(".ui-dialog");
-      $wrap.addClass("ep-jqui-overlay ep-posta-ui");
-      try { $wrap.draggable("option", "handle", ".ui-dialog-titlebar"); } catch (_) {}
-    } catch (_) {}
-
-    jqui.addTitleControls(doc, $, $dlg, key, opts || { minWidth: 460, dockPad: 12 });
+  function getPostaUiAPI() {
+    return w.ExtremePlug?.features?.postaUi || w.top?.ExtremePlug?.features?.postaUi || null;
   }
 
   // =========================================================
@@ -103,7 +81,7 @@
 
       debugLog("[POSTA][compose] bsx frame stub creato");
     } catch (e) {
-      console.warn("[POSTA][compose] ensureBxsFrame failed", e);
+      debugLog("[POSTA][compose] ensureBxsFrame failed", e);
     }
   }
 
@@ -143,16 +121,21 @@
         appendTo: $(doc.body),
         position: { my: "center", at: "center", of: doc.defaultView || w.window },
         open: function () {
-          ensurePostaOverlayUi(doc, $, $dlg, "posta_compose", {
-            minWidth: 460,
-            dockPad: 12,
-            onClose: () => {
-              try {
-                const ifr = doc.getElementById(COMP_IFR_ID);
-                if (ifr) ifr.src = "about:blank";
-              } catch (_) {}
-            },
-          });
+          const postaUi = getPostaUiAPI();
+          if (!postaUi?.ensure) {
+            debugLog("[POSTA][compose] posta.ui.js mancante: impossibile applicare UI preset");
+          } else {
+            postaUi.ensure(doc, $, $dlg, "posta_compose", {
+              minWidth: 460,
+              dockPad: 12,
+              onClose: () => {
+                try {
+                  const ifr = doc.getElementById(COMP_IFR_ID);
+                  if (ifr) ifr.src = "about:blank";
+                } catch (_) {}
+              },
+            });
+          }
         },
         close: function () {
           try {
@@ -223,7 +206,9 @@
       w.top.ExtremePlug.features = w.top.ExtremePlug.features || {};
       w.top.ExtremePlug.features.postaCompose = composeAPI;
     }
-  } catch (_) {}
+  } catch (e) {
+    debugLog("[POSTA][compose] export top failed", e);
+  }
 
   debugLog("[POSTA][compose] loaded");
 })(window);

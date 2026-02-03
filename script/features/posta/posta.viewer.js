@@ -234,7 +234,7 @@
 
     // avvia navigazione iniziale
     navViewerGet(doc, iframeId, startUrl, startUrl, onCompose)
-      .catch((e) => console.error("[POSTA][viewer] nav start err", e));
+      .catch((e) => debugLog("[POSTA][viewer] nav start err", e));
   };
 
   /**

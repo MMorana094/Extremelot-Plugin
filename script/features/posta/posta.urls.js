@@ -28,7 +28,10 @@
     return new Promise((resolve) => {
       const tick = (n) => {
         const name = getPgName();
-        debugLog("[POSTA][urls] PG name check", { attempt: maxAttempts - n, name });
+        debugLog("[POSTA][urls] PG name check", {
+          attempt: maxAttempts - n,
+          name
+        });
 
         if (name) return resolve(name);
         if (n <= 0) return resolve(null);

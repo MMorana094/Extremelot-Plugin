@@ -1,8 +1,9 @@
 // script/features/posta.js
 // Posta - Viewer (lettura) + routing
 // Dipendenze:
-//  - script/ui/overlay.js  (overlay.jqui)
+//  - script/ui/overlay.js
 //  - script/ui/getUiDoc.js (ExtremePlug.ui.getUiDoc / get$ForDoc)
+//  - script/features/posta.ui.js   ✅ (preset UI condiviso)
 //  - script/features/compose.js
 //  - script/features/posta.viewer.js
 //  - script/features/posta.urls.js
@@ -22,69 +23,23 @@
   // Dipendenze: compose.js + posta.viewer.js + posta.urls.js + ui/getUiDoc.js
   // =========================================================
   function getComposeAPI() {
-    return (
-      w.ExtremePlug?.features?.postaCompose ||
-      w.top?.ExtremePlug?.features?.postaCompose ||
-      null
-    );
+    return w.ExtremePlug?.features?.postaCompose || w.top?.ExtremePlug?.features?.postaCompose || null;
   }
 
   function getViewerAPI() {
-    return (
-      w.ExtremePlug?.features?.postaViewer ||
-      w.top?.ExtremePlug?.features?.postaViewer ||
-      null
-    );
+    return w.ExtremePlug?.features?.postaViewer || w.top?.ExtremePlug?.features?.postaViewer || null;
   }
 
   function getUrlsAPI() {
-    return (
-      w.ExtremePlug?.features?.postaUrls ||
-      w.top?.ExtremePlug?.features?.postaUrls ||
-      null
-    );
+    return w.ExtremePlug?.features?.postaUrls || w.top?.ExtremePlug?.features?.postaUrls || null;
   }
 
   function getUiHostAPI() {
     return w.ExtremePlug?.ui || w.top?.ExtremePlug?.ui || null;
   }
 
-  // =========================================================
-  // Overlay jqui helper
-  // =========================================================
-  function getOverlayJqui() {
-    return w.ExtremePlug?.ui?.overlay?.jqui || w.top?.ExtremePlug?.ui?.overlay?.jqui || null;
-  }
-
-  function ensurePostaOverlayUi(doc, $, $dlg, key, opts) {
-    const jqui = getOverlayJqui();
-    if (!jqui) {
-      debugLog("[POSTA] overlay.jqui mancante: carica /script/ui/overlay.js prima dei features");
-      return;
-    }
-
-    jqui.ensureDialogStyle(doc, {
-      ns: "posta",
-      dialogClass: "ep-posta-ui",
-      bg: "#f8e9aa",
-      border: "#6e0000",
-      titleBg: "#6e0000",
-    });
-
-    jqui.ensureIframeFill(doc, {
-      ns: "posta",
-      iframeClass: "ep-posta-iframe",
-      dialogClass: "ep-posta-ui",
-      bg: "#f8e9aa",
-    });
-
-    try {
-      const $wrap = $dlg.closest(".ui-dialog");
-      $wrap.addClass("ep-jqui-overlay ep-posta-ui");
-      try { $wrap.draggable("option", "handle", ".ui-dialog-titlebar"); } catch (_) {}
-    } catch (_) {}
-
-    jqui.addTitleControls(doc, $, $dlg, key, opts || { minWidth: 460, dockPad: 12 });
+  function getPostaUiAPI() {
+    return w.ExtremePlug?.features?.postaUi || w.top?.ExtremePlug?.features?.postaUi || null;
   }
 
   // =========================================================
@@ -155,7 +110,13 @@
       appendTo: $(doc.body),
       position: { my: "center", at: "center", of: doc.defaultView || w.window },
       open: function () {
-        ensurePostaOverlayUi(doc, $, $dlg, "posta_viewer", { minWidth: 460, dockPad: 12 });
+        // UI preset condiviso
+        const postaUi = getPostaUiAPI();
+        if (!postaUi?.ensure) {
+          console.warn("[POSTA] posta.ui.js mancante: impossibile applicare UI preset");
+        } else {
+          postaUi.ensure(doc, $, $dlg, "posta_viewer", { minWidth: 460, dockPad: 12 });
+        }
 
         const viewer = getViewerAPI();
         if (!viewer?.mount) {
@@ -182,36 +143,14 @@
   }
 
   // =========================================================
-  // UI HOST fallback (se getUiDoc.js non è disponibile nel frame)
-  // =========================================================
-  function fallbackUiDoc() {
-    try {
-      const d = w.top?.result?.document;
-      if (d?.body) return d;
-    } catch (_) {}
-    try {
-      if (w.document?.body) return w.document;
-    } catch (_) {}
-    return null;
-  }
-
-  function fallback$ForDoc(doc) {
-    try {
-      return doc?.defaultView?.jQuery || w.top?.jQuery || w.jQuery || null;
-    } catch (_) {
-      return w.top?.jQuery || w.jQuery || null;
-    }
-  }
-
-  // =========================================================
   // API pubblica
   // =========================================================
   postaAPI.open = function () {
     const ui = getUiHostAPI();
     const urls = getUrlsAPI();
 
-    const doc = (ui?.getUiDoc ? ui.getUiDoc() : fallbackUiDoc());
-    const $ = (ui?.get$ForDoc ? ui.get$ForDoc(doc) : fallback$ForDoc(doc));
+    const doc = ui?.getUiDoc ? ui.getUiDoc() : null;
+    const $ = ui?.get$ForDoc ? ui.get$ForDoc(doc) : null;
 
     const startUrl = urls?.START_URL || "https://www.extremelot.eu/proc/posta/leggilaposta.asp";
 
@@ -226,13 +165,13 @@
     const ui = getUiHostAPI();
     const urls = getUrlsAPI();
 
-    const doc = (ui?.getUiDoc ? ui.getUiDoc() : fallbackUiDoc());
+    const doc = ui?.getUiDoc ? ui.getUiDoc() : null;
     if (!doc?.body) {
       console.warn("[POSTA] scrivi: UI doc non trovato (getUiDoc mancante o frameset non pronto)");
       return;
     }
 
-    const u = (urls?.buildScriviUrlWithNomepg)
+    const u = urls?.buildScriviUrlWithNomepg
       ? await urls.buildScriviUrlWithNomepg()
       : "https://www.extremelot.eu/proc/posta/scrivialtri.asp";
 
