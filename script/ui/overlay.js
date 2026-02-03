@@ -429,5 +429,331 @@
     return { open, close, toggle };
   }
 
-  w.ExtremePlug.ui.overlay = { createOverlay };
+  // =========================================================
+  // jQuery UI Overlay helpers (centralizzazione UI jQueryUI)
+  // =========================================================
+  w.ExtremePlug.ui.overlay = w.ExtremePlug.ui.overlay || {};
+  w.ExtremePlug.ui.overlay.createOverlay = createOverlay;
+
+  // Namespace jqui
+  const jqui = (w.ExtremePlug.ui.overlay.jqui = w.ExtremePlug.ui.overlay.jqui || {});
+
+  jqui.ensureDialogStyle = function ensureDialogStyle(doc, theme) {
+    try {
+      if (!doc?.head) return;
+      const ns = String(theme?.ns || "base");
+      const styleId = "extremeplug-jqui-overlay-style-" + ns;
+      if (doc.getElementById(styleId)) return;
+
+      const dialogClass = String(theme?.dialogClass || "ep-jqui-overlay");
+      const bg = String(theme?.bg || "#fff");
+      const border = String(theme?.border || "rgba(0,0,0,0.35)");
+      const titleBg = String(theme?.titleBg || "#6e0000");
+      const titleColor = String(theme?.titleColor || "#fff");
+
+      const st = doc.createElement("style");
+      st.id = styleId;
+
+      st.textContent = `
+        .ui-dialog.${dialogClass}{
+          z-index: 9999999 !important;
+          background: ${bg} !important;
+          border: 3px solid ${border} !important;
+          border-radius: 8px !important;
+          overflow: hidden !important;
+          box-shadow: 0 10px 40px rgba(0,0,0,.35) !important;
+        }
+        .ui-widget-overlay{ z-index: 9999998 !important; }
+
+        .ui-dialog.${dialogClass} .ui-dialog-titlebar{
+          background: ${titleBg} !important;
+          border: 0 !important;
+          border-bottom: 1px solid rgba(0,0,0,.55) !important;
+          border-radius: 0 !important;
+          padding: 4px 10px !important;
+          min-height: 34px !important;
+          position: relative !important;
+          user-select: none !important;
+        }
+
+        .ui-dialog.${dialogClass} .ui-dialog-title{
+          color:${titleColor} !important;
+          font-weight:700 !important;
+          font-size:13px !important;
+          line-height:20px !important;
+          text-shadow: 0 1px 0 rgba(0,0,0,.45) !important;
+        }
+
+        .ui-dialog.${dialogClass} .ui-dialog-content{
+          padding:0 !important;
+          margin:0 !important;
+          overflow:hidden !important;
+          background:${bg} !important;
+        }
+
+        /* ====== titlebar controls ====== */
+        .ui-dialog.${dialogClass} .ep-title-controls{
+          position:absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          display:flex;
+          align-items:center;
+          gap:10px;
+          z-index: 2;
+        }
+
+        .ui-dialog.${dialogClass} .ep-opacity-wrap{
+          display:flex;
+          align-items:center;
+          gap:6px;
+          color:${titleColor};
+          font-size:12px;
+          opacity:.95;
+          white-space: nowrap;
+        }
+
+        .ui-dialog.${dialogClass} input.ep-opacity{
+          width:120px;
+          height: 12px;
+          cursor: pointer;
+        }
+
+        .ui-dialog.${dialogClass} .ep-titlebtn{
+          width: 26px;
+          height: 18px;
+          border-radius: 3px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          cursor:pointer;
+          user-select:none;
+          color:${titleColor};
+          font-weight:800;
+          line-height: 1;
+          opacity:.95;
+        }
+        .ui-dialog.${dialogClass} .ep-titlebtn:hover{
+          background: rgba(255,255,255,.10);
+        }
+
+        /* ✅ usa SOLO la X custom: nascondi la X nativa jQuery UI */
+        .ui-dialog.ep-jqui-overlay .ui-dialog-titlebar-close{ display:none !important; }
+      `;
+
+      doc.head.appendChild(st);
+    } catch (_) {}
+  };
+
+  // ✅ (1) CENTRALIZZATO: iframe fill per evitare “spazi neri”
+  jqui.ensureIframeFill = function ensureIframeFill(doc, params) {
+    try {
+      if (!doc?.head) return;
+
+      const ns = String(params?.ns || "generic");
+      const styleId = "extremeplug-jqui-iframefill-" + ns;
+      if (doc.getElementById(styleId)) return;
+
+      const iframeClass = String(params?.iframeClass || "").trim(); // es: ep-posta-iframe
+      const dialogClass = String(params?.dialogClass || "").trim(); // es: ep-posta-ui
+      const bg = String(params?.bg || "#fff");
+
+      const st = doc.createElement("style");
+      st.id = styleId;
+
+      const rules = [];
+
+      if (iframeClass) {
+        rules.push(`
+          .${iframeClass}{
+            width:100% !important;
+            height:100% !important;
+            border:0 !important;
+            display:block !important;
+            background:${bg} !important;
+          }
+        `);
+      }
+
+      if (dialogClass) {
+        rules.push(`
+          .ui-dialog.${dialogClass} .ui-dialog-content{
+            background:${bg} !important;
+            padding:0 !important;
+            margin:0 !important;
+            overflow:hidden !important;
+          }
+        `);
+      }
+
+      st.textContent = rules.join("\n");
+      doc.head.appendChild(st);
+    } catch (_) {}
+  };
+
+  // controls per dialog: slider opacity + minimize + close
+  jqui.addTitleControls = function addTitleControls(doc, $, $dlg, key, opts) {
+    try {
+      const $wrap = $dlg.closest(".ui-dialog");
+      if (!$wrap.length) return;
+
+      const $bar = $wrap.find(".ui-dialog-titlebar");
+      if (!$bar.length) return;
+
+      // evita doppioni
+      if ($bar.find(".ep-title-controls").length) return;
+
+      const controls = doc.createElement("div");
+      controls.className = "ep-title-controls";
+
+      // opacity
+      const opWrap = doc.createElement("div");
+      opWrap.className = "ep-opacity-wrap";
+      opWrap.title = "Opacità";
+
+      const opLabel = doc.createElement("span");
+      opLabel.textContent = "Opacity";
+
+      const op = doc.createElement("input");
+      op.className = "ep-opacity";
+      op.type = "range";
+      op.min = "25";
+      op.max = "100";
+      op.value = "100";
+
+      opWrap.appendChild(opLabel);
+      opWrap.appendChild(op);
+
+      // minimize
+      const btnMin = doc.createElement("div");
+      btnMin.className = "ep-titlebtn ep-minbtn";
+      btnMin.title = "Minimizza";
+      btnMin.textContent = "–";
+
+      // close (usa close dialog)
+      const btnClose = doc.createElement("div");
+      btnClose.className = "ep-titlebtn ep-xbtn";
+      btnClose.title = "Chiudi";
+      btnClose.textContent = "✕";
+
+      controls.appendChild(opWrap);
+      controls.appendChild(btnMin);
+      controls.appendChild(btnClose);
+
+      $bar.append(controls);
+
+      const stateKey = "ep_jqui_state_" + String(key || "dlg");
+      const win = doc.defaultView || w.window;
+
+      const minWidth = Number(opts?.minWidth || 460);
+      const dockPad = Number(opts?.dockPad || 12);
+      const onClose = typeof opts?.onClose === "function" ? opts.onClose : null;
+
+      const saveState = () => {
+        const rect = $wrap[0].getBoundingClientRect();
+        const st = {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          opacity: parseFloat($wrap.css("opacity") || "1") || 1,
+          minimized: false,
+        };
+        $wrap.data(stateKey, st);
+      };
+
+      const restoreState = () => {
+        const st = $wrap.data(stateKey);
+        if (!st) return;
+        $wrap.css({
+          left: Math.round(st.left) + "px",
+          top: Math.round(st.top) + "px",
+          width: Math.round(st.width) + "px",
+          height: Math.round(st.height) + "px",
+          opacity: st.opacity,
+          position: "fixed",
+        });
+      };
+
+      op.addEventListener("input", (e) => {
+        try { e.stopPropagation(); } catch (_) {}
+        const v = Math.max(0.25, Math.min(1, Number(op.value) / 100));
+        $wrap.css("opacity", String(v));
+        const st = $wrap.data(stateKey) || {};
+        st.opacity = v;
+        $wrap.data(stateKey, st);
+      });
+      op.addEventListener("mousedown", (e) => { try { e.stopPropagation(); } catch (_) {} });
+
+      // minimize
+      btnMin.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const st = $wrap.data(stateKey) || {};
+        const isMin = !!st.minimized;
+
+        if (!isMin) {
+          saveState();
+          const titleH = $wrap.find(".ui-dialog-titlebar").outerHeight(true) || 34;
+
+          // nascondi contenuto (dialog content)
+          $dlg.hide();
+
+          const vw = Math.max(320, win.innerWidth || 0);
+          const vh = Math.max(240, win.innerHeight || 0);
+
+          const pad = dockPad;
+
+          $wrap.css({
+            position: "fixed",
+            width: minWidth + "px",
+            height: (titleH + 2) + "px",
+            left: Math.max(pad, vw - minWidth - pad) + "px",
+            top: Math.max(pad, vh - (titleH + 2) - pad) + "px",
+          });
+
+          st.minimized = true;
+          $wrap.data(stateKey, st);
+
+          btnMin.textContent = "▢";
+          btnMin.title = "Ripristina";
+        } else {
+          st.minimized = false;
+          $wrap.data(stateKey, st);
+
+          restoreState();
+          $dlg.show();
+
+          btnMin.textContent = "–";
+          btnMin.title = "Minimizza";
+        }
+      });
+
+      // close
+      btnClose.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try { onClose && onClose(); } catch (_) {}
+        try { $dlg.dialog("close"); } catch (_) {
+          try { $wrap.remove(); } catch (_) {}
+        }
+      });
+
+      // ✅ NON spostiamo più la X nativa (evita doppioni)
+
+      // salva stato iniziale
+      setTimeout(() => {
+        try {
+          const st = $wrap.data(stateKey) || {};
+          if (!st.opacity) st.opacity = parseFloat($wrap.css("opacity") || "1") || 1;
+          if (st.left == null) saveState();
+          $wrap.data(stateKey, st);
+        } catch (_) {}
+      }, 0);
+    } catch (e) {
+      debugLog("[overlay.jqui] addTitleControls error", { err: String(e?.message || e) });
+    }
+  };
+
 })(window);
