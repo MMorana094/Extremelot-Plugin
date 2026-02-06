@@ -75,7 +75,7 @@
         "script/features/azioniFinestra.js",
         "script/features/chiedove.js",
         "script/features/simboli.js",
-        "script/features/collegati.js" 
+        "script/features/collegati.js"
       ]
     }
   ]
