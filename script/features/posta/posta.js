@@ -43,7 +43,7 @@
   }
 
   // =========================================================
-  // Cleanup
+  // Cleanup + Close helpers
   // =========================================================
   const VIEWER_ID = "ep-dialog-posta-viewer";
   const VIEW_IFR_ID = "ep-posta-view-iframe";
@@ -63,15 +63,50 @@
     }
   }
 
+  // Chiude SOLO il viewer se è aperto (serve prima di aprire il compose)
+  function closeViewerIfOpen(doc, $) {
+    try {
+      if (!doc?.body) return false;
+
+      // se ho jQuery UI, provo a chiudere in modo "pulito"
+      if ($ && $.fn && typeof $.fn.dialog === "function") {
+        const $dlg = $(doc).find("#" + VIEWER_ID);
+        if ($dlg.length) {
+          try { $dlg.dialog("close"); } catch (_) {
+            // fallback
+            try { $dlg.dialog("destroy"); } catch (_) {}
+            try { $dlg.remove(); } catch (_) {}
+          }
+          return true;
+        }
+      }
+
+      // fallback DOM
+      const el = doc.getElementById(VIEWER_ID);
+      if (el) {
+        try { el.remove(); } catch (_) {}
+        return true;
+      }
+    } catch (e) {
+      debugLog("[POSTA] closeViewerIfOpen error:", e);
+    }
+    return false;
+  }
+
   // =========================================================
   // Composer bridge
   // =========================================================
-  function openComposeFromHere(doc, url) {
+  function openComposeFromHere(doc, $, url) {
     const compose = getComposeAPI();
     if (!compose?.open) {
-      console.warn("[POSTA] compose.js non caricato: impossibile aprire composer");
+      debugLog("[POSTA] compose.js non caricato: impossibile aprire composer");
       return;
     }
+
+    // ✅ FIX: quando apro il compose, chiudo la lista/lettura (viewer)
+    const didClose = closeViewerIfOpen(doc, $);
+    if (didClose) debugLog("[POSTA] viewer chiuso prima di aprire compose");
+
     try { compose.ensureBxsFrame && compose.ensureBxsFrame(doc); } catch (_) {}
     compose.open(doc, url);
   }
@@ -113,14 +148,14 @@
         // UI preset condiviso
         const postaUi = getPostaUiAPI();
         if (!postaUi?.ensure) {
-          console.warn("[POSTA] posta.ui.js mancante: impossibile applicare UI preset");
+          debugLog("[POSTA] posta.ui.js mancante: impossibile applicare UI preset");
         } else {
           postaUi.ensure(doc, $, $dlg, "posta_viewer", { minWidth: 460, dockPad: 12 });
         }
 
         const viewer = getViewerAPI();
         if (!viewer?.mount) {
-          console.warn("[POSTA] posta.viewer.js non caricato: impossibile caricare contenuti viewer");
+          debugLog("[POSTA] posta.viewer.js non caricato: impossibile caricare contenuti viewer");
           return;
         }
 
@@ -130,7 +165,7 @@
           doc,
           iframeId: VIEW_IFR_ID,
           startUrl: startUrl,
-          onCompose: (u) => openComposeFromHere(doc, u),
+          onCompose: (u) => openComposeFromHere(doc, $, u), // ✅ passa anche $
         });
       },
       close: function () {
@@ -155,7 +190,7 @@
     const startUrl = urls?.START_URL || "https://www.extremelot.eu/proc/posta/leggilaposta.asp";
 
     if (!doc?.body) {
-      console.warn("[POSTA] open: UI doc non trovato (getUiDoc mancante o frameset non pronto)");
+      debugLog("[POSTA] open: UI doc non trovato (getUiDoc mancante o frameset non pronto)");
       return;
     }
     openViewer(doc, $, startUrl);
@@ -166,8 +201,10 @@
     const urls = getUrlsAPI();
 
     const doc = ui?.getUiDoc ? ui.getUiDoc() : null;
+    const $ = ui?.get$ForDoc ? ui.get$ForDoc(doc) : null;
+
     if (!doc?.body) {
-      console.warn("[POSTA] scrivi: UI doc non trovato (getUiDoc mancante o frameset non pronto)");
+      debugLog("[POSTA] scrivi: UI doc non trovato (getUiDoc mancante o frameset non pronto)");
       return;
     }
 
@@ -175,7 +212,10 @@
       ? await urls.buildScriviUrlWithNomepg()
       : "https://www.extremelot.eu/proc/posta/scrivialtri.asp";
 
-    openComposeFromHere(doc, u);
+    // anche qui: se l’utente fa "Scrivi" dal menu mentre la posta è aperta, chiudi il viewer
+    closeViewerIfOpen(doc, $);
+
+    openComposeFromHere(doc, $, u);
   };
 
   // Export anche su top
