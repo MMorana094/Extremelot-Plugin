@@ -19,6 +19,40 @@ const EP_HEARTBEAT_EVERY_MIN = 60;
 const EP_INSTALL_ID_KEY = "ep_install_id";
 const EP_INSTALL_CREATED_KEY = "ep_install_created";
 const EP_LAST_HEARTBEAT_KEY = "ep_last_heartbeat";
+const EP_DEBUG_MODE_KEY = "DEBUG_MODE";
+
+// -----------------------------
+// DEBUG LOG (rispetta DEBUG_MODE)
+// -----------------------------
+let EP_DEBUG_MODE = false;
+
+function debugLog() {
+  if (!EP_DEBUG_MODE) return;
+  try {
+    const args = Array.prototype.slice.call(arguments);
+    console.log.apply(console, ["[DEBUG]"].concat(args));
+  } catch (_) {}
+}
+
+function initDebugModeWatcher() {
+  try {
+    if (chrome?.storage?.local) {
+      chrome.storage.local.get([EP_DEBUG_MODE_KEY], (data) => {
+        EP_DEBUG_MODE = Boolean(data && data[EP_DEBUG_MODE_KEY]);
+        debugLog("DEBUG_MODE iniziale:", EP_DEBUG_MODE);
+      });
+
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes && changes[EP_DEBUG_MODE_KEY]) {
+          EP_DEBUG_MODE = Boolean(changes[EP_DEBUG_MODE_KEY].newValue);
+          debugLog("DEBUG_MODE aggiornato:", EP_DEBUG_MODE);
+        }
+      });
+    }
+  } catch (_) {}
+}
+
+initDebugModeWatcher();
 
 function epNowIso() {
   return new Date().toISOString();
@@ -51,6 +85,7 @@ async function epGetOrCreateInstallId() {
     );
   } catch (_) {}
 
+  debugLog("[tracking] installId creato:", id);
   return id;
 }
 
@@ -59,8 +94,9 @@ function epEnsureAlarm() {
     chrome.alarms.create(EP_HEARTBEAT_ALARM, {
       periodInMinutes: EP_HEARTBEAT_EVERY_MIN
     });
+    debugLog("[tracking] alarm ensured:", EP_HEARTBEAT_ALARM);
   } catch (e) {
-    console.warn("[tracking] alarms unavailable", e);
+    debugLog("[tracking] alarms unavailable", String(e));
   }
 }
 
@@ -86,8 +122,11 @@ async function epSendHeartbeat(reason) {
     await chrome.storage.local.set({
       [EP_LAST_HEARTBEAT_KEY]: epNowIso()
     });
-  } catch (_) {
-    // volutamente silenzioso
+
+    debugLog("[tracking] heartbeat ok:", reason, installId, version);
+  } catch (e) {
+    // volutamente silenzioso (ma se debug attivo, logga)
+    debugLog("[tracking] heartbeat fail:", String(e));
   }
 }
 
@@ -103,12 +142,12 @@ chrome.runtime.onInstalled.addListener(function (details) {
     const thisVersion = chrome.runtime.getManifest().version;
 
     if (details.reason === "install") {
-      console.info("First version installed");
+      debugLog("First version installed");
       return;
     }
 
     if (details.reason === "update") {
-      console.info("Updated version: " + thisVersion);
+      debugLog("Updated version:", thisVersion);
 
       chrome.tabs.query(
         { url: ["*://www.extremelot.eu/lotnew/*", "*://extremelot.eu/lotnew/*"] },
@@ -117,7 +156,7 @@ chrome.runtime.onInstalled.addListener(function (details) {
 
           tabs.forEach((tab) => {
             if (!tab?.id) return;
-            
+
             chrome.tabs.sendMessage(
               tab.id,
               { name: "showPopupOnUpdated", version: thisVersion },
@@ -131,7 +170,7 @@ chrome.runtime.onInstalled.addListener(function (details) {
       );
     }
   } catch (e) {
-    console.error("OnInstall Error:", e);
+    debugLog("OnInstall Error:", String(e));
   }
 });
 
@@ -155,11 +194,35 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 // ============================================
-// MESSAGE BRIDGE (TUO CODICE INALTERATO)
+// MESSAGE BRIDGE (TUO CODICE + endpoint debug)
 // ============================================
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   try {
     if (!msg || typeof msg !== "object") return;
+
+    // --- [NEW] EP_GET_INSTALL_INFO (per far copiare installId agli utenti) ---
+    if (msg.type === "EP_GET_INSTALL_INFO") {
+      (async () => {
+        try {
+          const installId = await epGetOrCreateInstallId();
+          const data = await chrome.storage.local.get([
+            EP_INSTALL_CREATED_KEY,
+            EP_LAST_HEARTBEAT_KEY
+          ]);
+
+          sendResponse({
+            ok: true,
+            installId,
+            created: data?.[EP_INSTALL_CREATED_KEY] || null,
+            lastHeartbeat: data?.[EP_LAST_HEARTBEAT_KEY] || null,
+            version: chrome.runtime.getManifest().version
+          });
+        } catch (e) {
+          sendResponse({ ok: false, error: String(e) });
+        }
+      })();
+      return true;
+    }
 
     // OPEN_TAB
     if (msg.type === "OPEN_TAB") {
@@ -257,7 +320,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }
   } catch (e) {
-    console.error("[background] error:", e);
+    debugLog("[background] error:", String(e));
     sendResponse({ ok: false, error: String(e) });
     return true;
   }

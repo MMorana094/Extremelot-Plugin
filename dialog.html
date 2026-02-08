@@ -1,12 +1,99 @@
-<html> 
-    <head> 
-        <title>Smart A Lot - Chrome</title>
-    </head> 
-    <body> 
-        <iframe src="https://colossus.altervista.org/PluginLot/extremeplug.php" style="width:450px;height:520px;"></iframe> 
-        <div style="margin-top:10px;"> 
-            <label> <input type="checkbox" id="debugToggle"> Modalità Debug </label> 
-        </div> 
-        <script src="script/popup.js"></script> 
-    </body> 
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Smart A Lot - Chrome</title>
+    <meta charset="utf-8" />
+
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 450px;
+        max-height: 620px;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+      }
+
+      /* contenitore principale scrollabile */
+      #popupRoot {
+        max-height: 620px;
+        overflow-y: auto;
+        box-sizing: border-box;
+        background: #f4f4f4;
+      }
+
+      /* iframe principale */
+      iframe {
+        width: 100%;
+        height: 520px;
+        border: none;
+        display: block;
+        background: #fff;
+      }
+
+      /* footer (debug + controlli) */
+      #popupFooter {
+        padding: 10px;
+        background: #e9e9e9;
+        border-top: 1px solid #cfcfcf;
+        box-sizing: border-box;
+      }
+
+      /* checkbox debug */
+      #popupFooter label {
+        font-size: 13px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      /* box debug (Install ID) */
+      #ep-install-box {
+        margin-top: 8px;
+        padding: 8px;
+        background: #f0f0f0;
+        border: 1px solid #c8c8c8;
+        border-radius: 6px;
+      }
+
+      /* input Install ID */
+      #ep-install-id {
+        background: #ffffff;
+        border: 1px solid #bdbdbd;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      /* pulsante copia */
+      #ep-copy-install-id {
+        background: #dedede;
+        border: 1px solid #b5b5b5;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      #ep-copy-install-id:hover {
+        background: #d4d4d4;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="popupRoot">
+      <iframe
+        src="https://colossus.altervista.org/PluginLot/extremeplug.php"
+      ></iframe>
+
+      <div id="popupFooter">
+        <label>
+          <input type="checkbox" id="debugToggle" />
+          Modalità Debug
+        </label>
+        <!-- il box Debug • Install ID viene iniettato da popup.js -->
+      </div>
+    </div>
+
+    <script src="script/popup.js"></script>
+  </body>
 </html>
