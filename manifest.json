@@ -53,6 +53,8 @@
         "script/core/pgData.js",
         "script/ui/overlay.js",
         "script/ui/getUiDoc.js",
+        "script/security/iframeGuard.js",
+        "script/security/iframeGuard.policies.scheda.js",
         "script/features/posta/posta.ui.js",
         "script/ui/finestra.js",
         "script/ui/dialogs.js",

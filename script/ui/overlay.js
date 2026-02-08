@@ -1,9 +1,7 @@
 // /script/ui/overlay.js
 // Overlay Factory (DRAG + RESIZE + OPACITY + MINIMIZE + TOP-MOUNT, frame-safe)
 //
-// Questo modulo centralizza tutta la logica duplicata degli overlay.
-// I singoli "features/*.js" devono solo passare una config e chiamare overlay.open().
-//
+// Questo modulo centralizza tutta la logica degli overlay.
 // Requisito: caricare questo file PRIMA dei file features che lo usano.
 
 (function (w) {
@@ -277,8 +275,7 @@
         wrap.style.opacity = String(slider.value);
       });
 
-      // ✅ FIX: impedisci che lo slider triggeri il drag (quando useresti bar come handle)
-      // (qui è utile se in futuro sposti lo slider nella titlebar "drag handle" o simili)
+      // ✅ FIX: impedisci che lo slider triggeri il drag
       const stopDragFromControls = (e) => {
         try { e.stopPropagation(); } catch (_) {}
         try { e.stopImmediatePropagation(); } catch (_) {}
@@ -289,7 +286,6 @@
 
       /* ================= DRAG + SNAP ================= */
       bar.addEventListener("mousedown", (ev) => {
-        // se minimizzato: niente drag
         if (wrap.dataset.minimized === "1") return;
 
         ev.preventDefault();
@@ -310,7 +306,6 @@
           let newLeft = clamp(startLeft + dx, EDGE_PAD, Math.max(EDGE_PAD, vw - curW - EDGE_PAD));
           let newTop = clamp(startTop + dy, EDGE_PAD, Math.max(EDGE_PAD, vh - curH - EDGE_PAD));
 
-          // snap bordi
           newLeft = snapToEdge(newLeft, EDGE_PAD, SNAP_PX);
           newTop = snapToEdge(newTop, EDGE_PAD, SNAP_PX);
           newLeft = snapToEdge(newLeft, vw - curW - EDGE_PAD, SNAP_PX);
@@ -319,7 +314,6 @@
           wrap.style.left = newLeft + "px";
           wrap.style.top = newTop + "px";
 
-          // aggiorna open state (solo se non minimizzato)
           wrap.dataset.openLeft = wrap.style.left;
           wrap.dataset.openTop = wrap.style.top;
         }
@@ -358,7 +352,6 @@
           let newW = clamp(startW + dx, MIN_W, maxW);
           let newH = clamp(startH + dy, MIN_H, maxH);
 
-          // snap a bordo destro/basso
           newW = snapToEdge(newW, maxW, SNAP_PX);
           newH = snapToEdge(newH, maxH, SNAP_PX);
 
@@ -426,7 +419,6 @@
       wrap.appendChild(iframe);
       wrap.appendChild(resizer);
 
-      // mount su root top
       root.appendChild(wrap);
 
       try {
@@ -469,6 +461,9 @@
       const border = String(theme?.border || "rgba(0,0,0,0.35)");
       const titleBg = String(theme?.titleBg || "#6e0000");
       const titleColor = String(theme?.titleColor || "#fff");
+
+      // ✅ PATCH: opzionale hide buttonpane (per dialog "card" senza pulsanti jQueryUI)
+      const hideButtonPane = !!theme?.hideButtonPane;
 
       const st = doc.createElement("style");
       st.id = styleId;
@@ -557,14 +552,15 @@
         }
 
         /* ✅ usa SOLO la X custom: nascondi la X nativa jQuery UI */
-        .ui-dialog.ep-jqui-overlay .ui-dialog-titlebar-close{ display:none !important; }
+        .ui-dialog.${dialogClass} .ui-dialog-titlebar-close{ display:none !important; }
+
+        ${hideButtonPane ? `.ui-dialog.${dialogClass} .ui-dialog-buttonpane{ display:none !important; }` : ``}
       `;
 
       doc.head.appendChild(st);
     } catch (_) {}
   };
 
-  // ✅ (1) CENTRALIZZATO: iframe fill per evitare “spazi neri”
   jqui.ensureIframeFill = function ensureIframeFill(doc, params) {
     try {
       if (!doc?.head) return;
@@ -573,8 +569,8 @@
       const styleId = "extremeplug-jqui-iframefill-" + ns;
       if (doc.getElementById(styleId)) return;
 
-      const iframeClass = String(params?.iframeClass || "").trim(); // es: ep-posta-iframe
-      const dialogClass = String(params?.dialogClass || "").trim(); // es: ep-posta-ui
+      const iframeClass = String(params?.iframeClass || "").trim();
+      const dialogClass = String(params?.dialogClass || "").trim();
       const bg = String(params?.bg || "#fff");
 
       const st = doc.createElement("style");
@@ -619,13 +615,11 @@
       const $bar = $wrap.find(".ui-dialog-titlebar");
       if (!$bar.length) return;
 
-      // evita doppioni
       if ($bar.find(".ep-title-controls").length) return;
 
       const controls = doc.createElement("div");
       controls.className = "ep-title-controls";
 
-      // opacity
       const opWrap = doc.createElement("div");
       opWrap.className = "ep-opacity-wrap";
       opWrap.title = "Opacità";
@@ -643,13 +637,11 @@
       opWrap.appendChild(opLabel);
       opWrap.appendChild(op);
 
-      // minimize
       const btnMin = doc.createElement("div");
       btnMin.className = "ep-titlebtn ep-minbtn";
       btnMin.title = "Minimizza";
       btnMin.textContent = "–";
 
-      // close (usa close dialog)
       const btnClose = doc.createElement("div");
       btnClose.className = "ep-titlebtn ep-xbtn";
       btnClose.title = "Chiudi";
@@ -661,23 +653,17 @@
 
       $bar.append(controls);
 
-      // =========================================================
-      // ✅ FIX: impedisci che lo slider trascini tutto il dialog
-      // (jQuery UI dialog è draggable dalla titlebar: lo slider è dentro la titlebar)
-      // =========================================================
       const stopDragFromControls = (e) => {
         try { e.stopPropagation(); } catch (_) {}
         try { e.stopImmediatePropagation(); } catch (_) {}
         return false;
       };
 
-      // Blocca eventi già in capture (più affidabile)
       ["pointerdown", "mousedown", "touchstart"].forEach((evt) => {
         op.addEventListener(evt, stopDragFromControls, true);
         opWrap.addEventListener(evt, stopDragFromControls, true);
       });
 
-      // Inoltre: dì a jQuery UI draggable di "cancellare" il drag quando parti dai controlli
       try {
         if (typeof $wrap.draggable === "function") {
           const cancelSel = [
@@ -728,6 +714,9 @@
       const restoreState = () => {
         const st = $wrap.data(stateKey);
         if (!st) return;
+        if (typeof st.left !== "number" || typeof st.top !== "number") return;
+        if (typeof st.width !== "number" || typeof st.height !== "number") return;
+
         $wrap.css({
           left: Math.round(st.left) + "px",
           top: Math.round(st.top) + "px",
@@ -747,24 +736,27 @@
         $wrap.data(stateKey, st);
       });
 
-      // minimize
+      // ✅ FIX CRITICO: non sovrascrivere lo state salvato da saveState()
       btnMin.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        const st = $wrap.data(stateKey) || {};
-        const isMin = !!st.minimized;
+        const st0 = $wrap.data(stateKey) || {};
+        const isMin = !!st0.minimized;
 
         if (!isMin) {
+          // salva lo stato completo (left/top/width/height)
           saveState();
+
+          // ricarica lo state appena salvato (per non perderlo)
+          const st = $wrap.data(stateKey) || {};
+
           const titleH = $wrap.find(".ui-dialog-titlebar").outerHeight(true) || 34;
 
-          // nascondi contenuto (dialog content)
           $dlg.hide();
 
           const vw = Math.max(320, win.innerWidth || 0);
           const vh = Math.max(240, win.innerHeight || 0);
-
           const pad = dockPad;
 
           $wrap.css({
@@ -781,6 +773,7 @@
           btnMin.textContent = "▢";
           btnMin.title = "Ripristina";
         } else {
+          const st = $wrap.data(stateKey) || {};
           st.minimized = false;
           $wrap.data(stateKey, st);
 
@@ -792,7 +785,6 @@
         }
       });
 
-      // close
       btnClose.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -802,7 +794,6 @@
         }
       });
 
-      // salva stato iniziale
       setTimeout(() => {
         try {
           const st = $wrap.data(stateKey) || {};
@@ -813,6 +804,76 @@
       }, 0);
     } catch (e) {
       debugLog("[overlay.jqui] addTitleControls error", { err: String(e?.message || e) });
+    }
+  };
+
+  // =========================================================
+  // ✅ helpers minimize/restore/toggle (riusabili dalle features)
+  // =========================================================
+  jqui.getState = function getState($dlg, key) {
+    try {
+      if (!$dlg || !$dlg.length) return null;
+      const $wrap = $dlg.closest(".ui-dialog");
+      if (!$wrap.length) return null;
+      const stateKey = "ep_jqui_state_" + String(key || "dlg");
+      return $wrap.data(stateKey) || null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  jqui.isMinimized = function isMinimized($dlg, key) {
+    try {
+      const st = jqui.getState($dlg, key) || {};
+      return !!st.minimized;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  jqui.restoreIfMinimized = function restoreIfMinimized($dlg, key) {
+    try {
+      if (!$dlg || !$dlg.length) return false;
+
+      const $wrap = $dlg.closest(".ui-dialog");
+      if (!$wrap.length) return false;
+
+      if (!jqui.isMinimized($dlg, key)) return false;
+
+      const $btn = $wrap.find(".ep-title-controls .ep-minbtn").first();
+      if ($btn.length) {
+        $btn.trigger("click");
+        return true;
+      }
+
+      const stateKey = "ep_jqui_state_" + String(key || "dlg");
+      const st = $wrap.data(stateKey) || {};
+      st.minimized = false;
+      $wrap.data(stateKey, st);
+      $dlg.show();
+
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  jqui.toggleOrRestore = function toggleOrRestore($dlg, key, opts) {
+    try {
+      if (!$dlg || !$dlg.length) return false;
+
+      if (jqui.restoreIfMinimized($dlg, key)) return true;
+
+      try {
+        const onClose = typeof opts?.onClose === "function" ? opts.onClose : null;
+        try { onClose && onClose(); } catch (_) {}
+        try { $dlg.dialog("close"); }
+        catch (_) { try { $dlg.closest(".ui-dialog").remove(); } catch (_) {} }
+      } catch (_) {}
+
+      return true;
+    } catch (_) {
+      return false;
     }
   };
 })(window);

@@ -16,11 +16,46 @@
 
       const el = fw.document.querySelector("input[name='player']");
       const v = el?.value;
-      return (v && String(v).trim()) ? String(v).trim() : null;
+      return v && String(v).trim() ? String(v).trim() : null;
     } catch (e) {
       debugLog("getPgName error:", e);
       return null;
     }
+  }
+
+  // ✅ NEW: retry policy centralizzata (usabile da tutte le features)
+  function waitPgName(maxAttempts, delayMs, cb) {
+    const attemptsLeft = Number(maxAttempts);
+    const delay = Number(delayMs);
+
+    let name = null;
+    try {
+      name = getPgName();
+    } catch (_) {
+      name = null;
+    }
+
+    debugLog("[pgData] waitName check", { attemptsLeft, name });
+
+    if (name) {
+      try { cb && cb(name); } catch (_) {}
+      return;
+    }
+
+    if (!isFinite(attemptsLeft) || attemptsLeft <= 0) {
+      try { cb && cb(null); } catch (_) {}
+      return;
+    }
+
+    const nextDelay = isFinite(delay) && delay >= 0 ? delay : 100;
+
+    setTimeout(() => {
+      try {
+        waitPgName(attemptsLeft - 1, nextDelay, cb);
+      } catch (_) {
+        try { cb && cb(null); } catch (_) {}
+      }
+    }, nextDelay);
   }
 
   function getPgData() {
@@ -30,7 +65,7 @@
       if (!doc) return { nome: null, luogo: null, html: null };
 
       const body = doc.body;
-      const html = body ? (body.innerHTML || null) : null;
+      const html = body ? body.innerHTML || null : null;
 
       // luogo: nel tuo logo frame esiste input[name='titolo'] (come nel vecchio pgData)
       const nome = getPgName();
@@ -49,6 +84,7 @@
   // Namespace nuovo
   w.ExtremePlug.pg = w.ExtremePlug.pg || {};
   w.ExtremePlug.pg.getName = getPgName;
+  w.ExtremePlug.pg.waitName = waitPgName; // ✅ NEW export
   w.ExtremePlug.pg.getData = getPgData;
 
   // Compatibilità nomi legacy
@@ -81,5 +117,4 @@
   w.ExtremePlug.ui = w.ExtremePlug.ui || {};
   w.ExtremePlug.ui.getOverlayDoc = getOverlayDoc;
   w.ExtremePlug.ui.appendToOverlayWhenReady = appendToOverlayWhenReady;
-
 })(window);
