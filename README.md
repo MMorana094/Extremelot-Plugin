@@ -99,6 +99,7 @@ Il plugin ha accesso esclusivamente ai seguenti domini:
 - `https://www.extremelot.eu/*`
 - `https://extremelot.eu/*`
 - `https://extremeplug.altervista.org/*`
+- `https://colossus.altervista.org/*`
 
 Nessun accesso a siti esterni non correlati al progetto.
 
