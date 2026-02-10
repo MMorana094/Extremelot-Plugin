@@ -18,8 +18,7 @@
 ],
   "host_permissions": [
     "https://extremelot.eu/*",
-    "https://www.extremelot.eu/*",
-    "https://extremeplug.altervista.org/*"
+    "https://www.extremelot.eu/*"
   ],
   "icons": {
     "128": "128.jpg",
