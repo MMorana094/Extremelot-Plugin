@@ -58,6 +58,31 @@ function epNowIso() {
   return new Date().toISOString();
 }
 
+// -----------------------------
+// Browser detect (Chrome vs Edge)
+// -----------------------------
+function epDetectBrowser() {
+  // MV3 SW: navigator di solito esiste; fallback safe
+  try {
+    const uaData = navigator?.userAgentData;
+    if (uaData && Array.isArray(uaData.brands)) {
+      const brands = uaData.brands.map((b) => String(b.brand || "").toLowerCase());
+      if (brands.some((b) => b.includes("microsoft edge") || b.includes("edge"))) return "edge";
+      if (brands.some((b) => b.includes("chromium") || b.includes("google chrome") || b.includes("chrome"))) return "chrome";
+    }
+  } catch (_) {}
+
+  try {
+    const ua = String(navigator?.userAgent || "");
+    if (/Edg\//.test(ua)) return "edge";
+    if (/Chrome\//.test(ua)) return "chrome";
+  } catch (_) {}
+
+  return "chrome"; // default sensato per build chromium
+}
+
+const EP_BROWSER = epDetectBrowser();
+
 async function epGetOrCreateInstallId() {
   const data = await chrome.storage.local.get([
     EP_INSTALL_ID_KEY,
@@ -114,6 +139,7 @@ async function epSendHeartbeat(reason) {
       body: JSON.stringify({
         installId,
         version,
+        browser: EP_BROWSER, // ✅ NEW
         reason: reason || "heartbeat",
         ts: epNowIso()
       })
@@ -123,9 +149,8 @@ async function epSendHeartbeat(reason) {
       [EP_LAST_HEARTBEAT_KEY]: epNowIso()
     });
 
-    debugLog("[tracking] heartbeat ok:", reason, installId, version);
+    debugLog("[tracking] heartbeat ok:", reason, installId, version, EP_BROWSER);
   } catch (e) {
-    // volutamente silenzioso (ma se debug attivo, logga)
     debugLog("[tracking] heartbeat fail:", String(e));
   }
 }
@@ -135,7 +160,6 @@ async function epSendHeartbeat(reason) {
 // =============================
 chrome.runtime.onInstalled.addListener(function (details) {
   try {
-    // tracking
     epEnsureAlarm();
     epSendHeartbeat(details?.reason || "installed").catch(() => {});
 
@@ -161,7 +185,6 @@ chrome.runtime.onInstalled.addListener(function (details) {
               tab.id,
               { name: "showPopupOnUpdated", version: thisVersion },
               function () {
-                // evita "Unchecked runtime.lastError" quando non c'è un receiver
                 if (chrome.runtime.lastError) return;
               }
             );
@@ -200,7 +223,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   try {
     if (!msg || typeof msg !== "object") return;
 
-    // --- [NEW] EP_GET_INSTALL_INFO (per far copiare installId agli utenti) ---
+    // --- EP_GET_INSTALL_INFO ---
     if (msg.type === "EP_GET_INSTALL_INFO") {
       (async () => {
         try {
@@ -215,7 +238,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             installId,
             created: data?.[EP_INSTALL_CREATED_KEY] || null,
             lastHeartbeat: data?.[EP_LAST_HEARTBEAT_KEY] || null,
-            version: chrome.runtime.getManifest().version
+            version: chrome.runtime.getManifest().version,
+            browser: EP_BROWSER // ✅ NEW
           });
         } catch (e) {
           sendResponse({ ok: false, error: String(e) });

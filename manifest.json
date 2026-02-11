@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Estensione eXtremelot 1.5",
-  "short_name": "Extremeplug",
-  "version": "1.5.1",
+  "name": "eXtremePlug",
+  "short_name": "eXtremePlug",
+  "version": "1.5.3",
   "description": "eXtremelot Plugin",
   "background": {
     "service_worker": "background.js"
