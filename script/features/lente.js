@@ -19,6 +19,7 @@
     id: "ep-descLuogo-wrap",
     url: "https://www.extremelot.eu/proc/vedi_desc_21.asp",
     title: "Descrizione del luogo",
+    backButton: false,
     ids: {
       iframe: "ep-descLuogo-iframe",
       bar: "ep-descLuogo-bar",

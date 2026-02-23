@@ -19,6 +19,7 @@
     id: "ep-azioni-wrap",
     url: "https://www.extremelot.eu/proc/azioni_21.asp",
     title: "Azioni nel Luogo",
+    backButton: false,
     ids: {
       iframe: "ep-azioni-iframe",
       bar: "ep-azioni-bar",

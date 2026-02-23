@@ -19,6 +19,7 @@
     id: "ep-regole-wrap",
     url: "https://www.extremelot.eu/proc/regole/regole2.html",
     title: "Regole",
+    backButton: false,
     ids: {
       iframe: "ep-regole-iframe",
       bar: "ep-regole-bar",

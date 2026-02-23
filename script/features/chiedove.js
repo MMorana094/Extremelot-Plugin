@@ -18,7 +18,8 @@
   const overlay = factory({
     id: "ep-chiedove-wrap",
     url: "https://www.extremelot.eu/proc/chiedove.asp",
-    title: "Chiedo Dove",
+    title: "Chi e dove",
+    backButton: false,
     ids: {
       iframe: "ep-chiedove-iframe",
       bar: "ep-chiedove-bar",

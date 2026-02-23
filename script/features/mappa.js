@@ -19,6 +19,7 @@
     id: "ep-mappa-wrap",
     url: "https://ordinedelleguide.altervista.org/mappa/index.php",
     title: "Mappa",
+    backButton: false,
     ids: {
       iframe: "ep-mappa-iframe",
       bar: "ep-mappa-bar",

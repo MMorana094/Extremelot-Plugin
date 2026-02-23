@@ -1,7 +1,7 @@
 // script/features/linkBookmarks.js
-// Link Bookmark manager (tabella + add + persistenza locale)
+// Link Bookmark manager (tabella LOT + add/edit + persistenza locale)
 // UI: overlay factory (top-mounted) con iframe about:blank, contenuto iniettato.
-// NOTE: i link si aprono in nuova scheda (esterno). Back arrow disabilitata.
+// NOTE: i link si aprono in nuova scheda (esterno).
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -47,7 +47,6 @@
   function normalizeUrl(u) {
     const s = String(u || "").trim();
     if (!s) return "";
-    // se non ha schema, prova https://
     if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) return "https://" + s;
     return s;
   }
@@ -70,6 +69,7 @@
         id: String(x?.id || ""),
         name: String(x?.name || ""),
         url: String(x?.url || ""),
+        desc: String(x?.desc || ""),
       }))
       .filter((x) => x.id);
   }
@@ -105,20 +105,19 @@
   <title>Link Bookmark</title>
   <style>
     :root{
-      --bg:#f8e9aa;
-      --border:#6e0000;
-      --text:#111;
-      --muted:#555;
-      --row:#fff7cf;
-      --row2:#fff2b7;
-      --btn:#ffffff;
+      --bg: #f8e9aa;         /* fondo giallo LOT */
+      --header: #6e0000;     /* rosso scuro */
+      --grid: #d7caa0;       /* bordo griglia */
+      --rowA: #f7e7b1;       /* giallino */
+      --rowB: #c9cf86;       /* verdino */
+      --text: #1b1b1b;
     }
 
-    html,body{height:100%;}
+    html,body{ height:100%; }
     body{
       margin:0;
-      font-family: Arial, sans-serif;
       background: var(--bg);
+      font-family: Arial, sans-serif;
       color: var(--text);
     }
 
@@ -126,159 +125,192 @@
       height:100%;
       display:flex;
       flex-direction:column;
+      padding:10px;
+      box-sizing:border-box;
     }
 
-    .topbar{
+    .toolbar{
       display:flex;
+      justify-content:flex-end;
       align-items:center;
-      justify-content:space-between;
-      padding:10px 12px;
-      border-bottom:1px solid rgba(0,0,0,0.15);
-      gap:10px;
-    }
-
-    .title{
-      font-weight:700;
-      font-size:14px;
-      letter-spacing:0.2px;
-    }
-
-    .actions{
-      display:flex;
       gap:8px;
-      align-items:center;
+      margin-bottom:8px;
     }
-
-    .btn{
-      border:1px solid rgba(0,0,0,0.25);
-      background:var(--btn);
-      border-radius:8px;
-      padding:6px 10px;
-      cursor:pointer;
-      font-size:13px;
-      line-height:1;
-      user-select:none;
-    }
-    .btn:hover{filter:brightness(0.98);}
-    .btn:active{transform:translateY(1px);}
-
+    /* Bottone + stile titlebar */
     .btnPlus{
-      width:28px; height:28px;
+      width:28px;
+      height:28px;
       display:inline-flex;
       align-items:center;
       justify-content:center;
       font-weight:800;
-      border-radius:10px;
+      font-size:18px;
+      line-height:1;
+      border-radius:6px;
+      border:1px solid rgba(0,0,0,0.35);
+      background: var(--header);   /* stesso rosso titlebar */
+      color:#ffffff;               /* + chiaro */
+      cursor:pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
     }
 
+    .btnPlus:hover{
+      filter: brightness(1.08);
+    }
+
+    .btnPlus:active{
+      transform: translateY(1px);
+    }
+    .btn{
+      cursor:pointer;
+      user-select:none;
+      border:1px solid rgba(0,0,0,0.25);
+      background:#fff;
+      border-radius:6px;
+      padding:6px 10px;
+      font-size:13px;
+      line-height:1;
+    }
+    .btn:active{ transform: translateY(1px); }
+
     .tableWrap{
-      padding:10px 12px 12px;
-      overflow:auto;
       flex:1;
+      overflow:auto;
     }
 
     table{
       width:100%;
       border-collapse:separate;
       border-spacing:0;
-      overflow:hidden;
-      border:1px solid rgba(0,0,0,0.18);
-      border-radius:10px;
-      background:#fff;
+      table-layout:fixed;
+      border:1px solid var(--grid);
+      background: transparent;
     }
 
     thead th{
-      text-align:left;
+      background: var(--header);
+      color:#fff;
+      font-weight:700;
       font-size:12px;
-      color:var(--muted);
-      background:#fff;
-      padding:10px;
-      border-bottom:1px solid rgba(0,0,0,0.12);
+      padding:6px 8px;
+      border-right:1px solid rgba(255,255,255,0.25);
+      text-align:center;
     }
+    thead th:first-child{ width:42px; }
+    thead th:nth-child(2){ text-align:left; }
+    thead th:nth-child(3){ width:130px; }
+    thead th:nth-child(4){ width:110px; }
+    thead th:nth-child(5){ width:110px; }
+    thead th:last-child{ border-right:0; }
 
     tbody td{
-      padding:8px 10px;
-      border-bottom:1px solid rgba(0,0,0,0.08);
+      padding:6px 8px;
+      border-top:1px solid var(--grid);
+      border-right:1px solid var(--grid);
       vertical-align:middle;
-      background: var(--row);
+      font-size:12px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
+    tbody td:last-child{ border-right:0; }
 
-    tbody tr:nth-child(even) td{ background: var(--row2); }
-    tbody tr:last-child td{ border-bottom:none; }
+    tbody tr:nth-child(odd) td{ background: var(--rowA); }
+    tbody tr:nth-child(even) td{ background: var(--rowB); }
 
-    .in{
-      width:100%;
-      box-sizing:border-box;
-      border:1px solid rgba(0,0,0,0.18);
-      border-radius:8px;
-      padding:7px 8px;
-      font-size:13px;
-      background:#fff;
-      outline:none;
+    .siteCell{
+      text-align:left;
+      white-space:normal;
+      overflow:visible;
     }
-    .in:focus{
-      border-color: rgba(110,0,0,0.5);
-      box-shadow: 0 0 0 2px rgba(110,0,0,0.12);
-    }
-
-    .colName{ width:35%; }
-    .colLink{ width:45%; }
-    .colOpen{ width:20%; }
-
-    .rowBtns{
-      display:flex;
-      gap:8px;
-      justify-content:flex-end;
-      align-items:center;
-    }
-
-    .btnOpen{
-      padding:7px 10px;
-      border-radius:8px;
+    .siteName{
       font-weight:700;
+      font-size:12px;
+      line-height:1.1;
+      margin:0;
+    }
+    .siteDesc{
+      font-size:11px;
+      opacity:0.9;
+      line-height:1.1;
+      margin:2px 0 0 0;
     }
 
-    .btnDel{
-      padding:7px 10px;
-      border-radius:8px;
-      color:#800;
-      border-color: rgba(128,0,0,0.28);
+    .iconCell{ text-align:center; }
+    .actCell{ text-align:center; }
+
+    .icoBtn{
+      width:26px;
+      height:26px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      border:0;
+      background:transparent;
+      padding:0;
+      margin:0;
+    }
+    .icoBtn:active{ transform: translateY(1px); }
+
+    .svg{
+      width:20px;
+      height:20px;
+      display:block;
+      filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25));
+    }
+
+    /* icone gif LOT */
+    .icoImg{
+      width:20px;
+      height:20px;
+      display:block;
+    }
+
+    /* favicon (icona sito) */
+    .favImg{
+      width:16px;
+      height:16px;
+      display:block;
+      image-rendering:auto;
     }
 
     .empty{
-      padding:10px 2px;
-      color:var(--muted);
+      padding:10px;
+      text-align:center;
       font-size:13px;
+      opacity:0.85;
     }
 
-    /* modal add */
+    /* Modal */
     .modalBack{
       position:fixed; inset:0;
-      background:rgba(0,0,0,0.25);
+      background:rgba(0,0,0,0.35);
       display:none;
       align-items:center;
       justify-content:center;
       z-index:9999;
     }
     .modal{
-      width:min(520px, calc(100vw - 24px));
+      width:min(560px, calc(100vw - 24px));
       background:#fff;
-      border:3px solid var(--border);
-      border-radius:12px;
-      box-shadow:0 10px 40px rgba(0,0,0,0.35);
+      border:3px solid var(--header);
+      border-radius:10px;
       overflow:hidden;
+      box-shadow:0 10px 40px rgba(0,0,0,0.35);
     }
     .modalHead{
-      background:var(--border);
+      background: var(--header);
       color:#fff;
-      padding:10px 12px;
+      padding:8px 10px;
       font-weight:700;
       display:flex;
       justify-content:space-between;
       align-items:center;
+      font-size:13px;
     }
     .modalBody{
-      padding:12px;
+      padding:10px;
       display:flex;
       flex-direction:column;
       gap:10px;
@@ -286,63 +318,79 @@
     .modalRow label{
       display:block;
       font-size:12px;
-      color:#444;
       margin:0 0 6px 0;
+      color:#333;
+    }
+    .in{
+      width:100%;
+      box-sizing:border-box;
+      border:1px solid rgba(0,0,0,0.25);
+      border-radius:6px;
+      padding:7px 8px;
+      font-size:13px;
+      outline:none;
+    }
+    .in:focus{
+      border-color: rgba(110,0,0,0.6);
+      box-shadow: 0 0 0 2px rgba(110,0,0,0.15);
     }
     .modalFoot{
-      padding:12px;
       display:flex;
       justify-content:flex-end;
-      gap:10px;
-      border-top:1px solid rgba(0,0,0,0.10);
+      gap:8px;
+      padding:10px;
+      border-top:1px solid rgba(0,0,0,0.12);
       background:#fafafa;
     }
   </style>
 </head>
 <body>
   <div class="wrap" id="ep-lb-root">
-    <div class="topbar">
-      <div class="title">Link Bookmark</div>
-      <div class="actions">
-        <button class="btn btnPlus" id="ep-lb-add" title="Aggiungi">+</button>
-      </div>
+    <div class="toolbar">
+      <button class="btnPlus" id="ep-lb-add" title="Aggiungi">+</button>
     </div>
 
     <div class="tableWrap">
       <table aria-label="Bookmarks">
         <thead>
           <tr>
-            <th class="colName">Nome Sito</th>
-            <th class="colLink">Modifica Link</th>
-            <th class="colOpen">Apri</th>
+            <th></th>
+            <th style="text-align:left">Sito Web</th>
+            <th>LINK</th>
+            <th>Modifica</th>
+            <th>Cancella</th>
           </tr>
         </thead>
         <tbody id="ep-lb-tbody">
-          <tr><td colspan="3" class="empty">Caricamento…</td></tr>
+          <tr><td colspan="5" class="empty">Caricamento…</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
   <div class="modalBack" id="ep-lb-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Aggiungi bookmark">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Bookmark">
       <div class="modalHead">
-        <div>Aggiungi bookmark</div>
+        <div id="ep-lb-modal-title">Aggiungi</div>
         <button class="btn" id="ep-lb-modal-x" title="Chiudi">✕</button>
       </div>
       <div class="modalBody">
         <div class="modalRow">
-          <label for="ep-lb-new-name">Nome Sito</label>
-          <input class="in" id="ep-lb-new-name" placeholder="es. Wiki LOT" />
+          <label for="ep-lb-in-name">Nome Sito</label>
+          <input class="in" id="ep-lb-in-name" placeholder="es. Bottega Armi" />
         </div>
         <div class="modalRow">
-          <label for="ep-lb-new-url">Link</label>
-          <input class="in" id="ep-lb-new-url" placeholder="es. https://..." />
+          <label for="ep-lb-in-desc">Descrizione (facoltativa)</label>
+          <input class="in" id="ep-lb-in-desc" placeholder="es. Descrizione facoltativa" />
+        </div>
+        <div class="modalRow">
+          <label for="ep-lb-in-url">Link</label>
+          <input class="in" id="ep-lb-in-url" placeholder="es. https://..." />
         </div>
       </div>
       <div class="modalFoot">
         <button class="btn" id="ep-lb-cancel">Annulla</button>
-        <button class="btn btnOpen" id="ep-lb-save">Salva</button>
+        <button class="btn" id="ep-lb-save">Salva</button>
       </div>
     </div>
   </div>
@@ -365,89 +413,172 @@
     const btnAdd = doc.getElementById("ep-lb-add");
 
     const modal = doc.getElementById("ep-lb-modal");
+    const modalTitle = doc.getElementById("ep-lb-modal-title");
     const btnX = doc.getElementById("ep-lb-modal-x");
     const btnCancel = doc.getElementById("ep-lb-cancel");
     const btnSave = doc.getElementById("ep-lb-save");
-    const inName = doc.getElementById("ep-lb-new-name");
-    const inUrl = doc.getElementById("ep-lb-new-url");
+
+    const inName = doc.getElementById("ep-lb-in-name");
+    const inDesc = doc.getElementById("ep-lb-in-desc");
+    const inUrl = doc.getElementById("ep-lb-in-url");
 
     let bookmarks = [];
     let saveTimer = null;
+
+    // modalità modal: add o edit
+    let editId = null;
+
+    // (1) e (2) icone LOT
+    const ICON_DEL = "https://www.extremelot.eu/lotnew/img/features/eliminamsg2.gif";
+    const ICON_EDIT = "https://www.extremelot.eu/lotnew/img/features/rispondimsg2.gif";
 
     function scheduleSave() {
       if (saveTimer) clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
         saveBookmarks(bookmarks).catch(() => {});
-      }, 450);
+      }, 350);
     }
 
-    function openModal() {
+    function playIconSvg() {
+      // "tastino play" per la colonna LINK
+      return `
+        <svg class="svg" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="2"/>
+          <path d="M10 8l6 4-6 4z" fill="rgba(0,0,0,0.75)"/>
+        </svg>`;
+    }
+
+    function safeOriginFavicon(url) {
+      // favicon del sito: origin + /favicon.ico
+      try {
+        const u = new URL(normalizeUrl(url));
+        return u.origin.replace(/\/+$/, "") + "/favicon.ico";
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function attachFaviconFallbacks() {
+      // se favicon non esiste -> fallback "globo"
+      try {
+        const imgs = doc.querySelectorAll("img.ep-lb-fav");
+        imgs.forEach((img) => {
+          if (img.__epBound) return;
+          img.__epBound = true;
+
+          img.addEventListener(
+            "error",
+            () => {
+              try {
+                const svg = `
+                  <svg class="svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="2"/>
+                    <path d="M3 12h18" stroke="rgba(0,0,0,0.35)" stroke-width="1.6"/>
+                    <path d="M12 3c3.5 3.5 3.5 14 0 18" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.6"/>
+                    <path d="M12 3c-3.5 3.5-3.5 14 0 18" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.6"/>
+                  </svg>`;
+                const span = doc.createElement("span");
+                span.innerHTML = svg;
+                img.replaceWith(span.firstElementChild);
+              } catch (_) {}
+            },
+            { once: true }
+          );
+        });
+      } catch (_) {}
+    }
+
+    function openModal(mode, b) {
+      editId = mode === "edit" ? String(b?.id || "") : null;
+
+      modalTitle.textContent = mode === "edit" ? "Modifica" : "Aggiungi";
+      inName.value = String(b?.name || "");
+      inDesc.value = String(b?.desc || "");
+      inUrl.value = String(b?.url || "");
+
       modal.style.display = "flex";
-      inName.value = "";
-      inUrl.value = "";
       setTimeout(() => inName.focus(), 10);
     }
 
     function closeModal() {
       modal.style.display = "none";
-    }
-
-    function render() {
-      if (!tbody) return;
-
-      if (!bookmarks.length) {
-        tbody.innerHTML = `<tr><td colspan="3" class="empty">Nessun bookmark. Premi “+” per aggiungerne uno.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = bookmarks
-        .map((b) => {
-          const name = escapeHtml(b.name);
-          const url = escapeHtml(b.url);
-          return `
-            <tr data-id="${escapeHtml(b.id)}">
-              <td class="colName">
-                <input class="in ep-lb-name" value="${name}" placeholder="Nome…" />
-              </td>
-              <td class="colLink">
-                <input class="in ep-lb-url" value="${url}" placeholder="https://…" />
-              </td>
-              <td class="colOpen">
-                <div class="rowBtns">
-                  <button class="btn btnDel ep-lb-del" title="Rimuovi">✕</button>
-                  <button class="btn btnOpen ep-lb-open" title="Apri in nuova scheda">Apri</button>
-                </div>
-              </td>
-            </tr>
-          `;
-        })
-        .join("");
+      editId = null;
     }
 
     function findById(id) {
       return bookmarks.find((x) => x.id === id) || null;
     }
 
-    function updateFromRow(tr) {
-      const id = tr.getAttribute("data-id");
-      const b = findById(id);
-      if (!b) return;
+    function render() {
+      if (!tbody) return;
 
-      const nameIn = tr.querySelector(".ep-lb-name");
-      const urlIn = tr.querySelector(".ep-lb-url");
+      if (!bookmarks.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty">Nessun bookmark.</td></tr>`;
+        return;
+      }
 
-      b.name = String(nameIn?.value || "").trim();
-      b.url = String(urlIn?.value || "").trim();
-      scheduleSave();
+      tbody.innerHTML = bookmarks
+        .map((b) => {
+          const id = escapeHtml(b.id);
+          const name = escapeHtml(b.name || "(senza nome)");
+          const desc = escapeHtml(b.desc || "Descrizione facoltativa");
+
+          // ✅ favicon nella PRIMA colonna (icona sito)
+          const fav = safeOriginFavicon(b.url);
+          const favHtml = fav
+            ? `<img class="favImg ep-lb-fav" src="${escapeHtml(fav)}" alt="" referrerpolicy="no-referrer" />`
+            : "";
+
+          return `
+            <tr data-id="${id}">
+              <td class="iconCell">
+                ${favHtml || ""}
+              </td>
+              <td class="siteCell">
+                <div class="siteName">${name}</div>
+                <div class="siteDesc">${desc}</div>
+              </td>
+              <td class="actCell">
+                <button class="icoBtn ep-lb-open" title="Apri">
+                  ${playIconSvg()}
+                </button>
+              </td>
+              <td class="actCell">
+                <button class="icoBtn ep-lb-edit" title="Modifica">
+                  <img class="icoImg" src="${escapeHtml(ICON_EDIT)}" alt="Modifica" referrerpolicy="no-referrer" />
+                </button>
+              </td>
+              <td class="actCell">
+                <button class="icoBtn ep-lb-del" title="Cancella">
+                  <img class="icoImg" src="${escapeHtml(ICON_DEL)}" alt="Cancella" referrerpolicy="no-referrer" />
+                </button>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      attachFaviconFallbacks();
     }
 
     async function boot() {
       bookmarks = await loadBookmarks();
+
+      // retro-compat: se in passato non c'era desc, normalizza
+      bookmarks = bookmarks.map((b) => ({
+        id: String(b.id || uid()),
+        name: String(b.name || ""),
+        url: String(b.url || ""),
+        desc: String(b.desc || ""),
+      }));
+
       render();
     }
 
-    // Add / modal
-    btnAdd?.addEventListener("click", openModal);
+    // Toolbar
+    btnAdd?.addEventListener("click", () => openModal("add", null));
+
+    // Modal
     btnX?.addEventListener("click", closeModal);
     btnCancel?.addEventListener("click", closeModal);
 
@@ -457,16 +588,29 @@
 
     btnSave?.addEventListener("click", async () => {
       const name = String(inName?.value || "").trim();
+      const desc = String(inDesc?.value || "").trim();
       const url = String(inUrl?.value || "").trim();
-      if (!name && !url) return;
 
-      bookmarks.unshift({
-        id: uid(),
-        name: name || "(senza nome)",
-        url: url,
-      });
+      if (!name && !url && !desc) return;
 
-      await saveBookmarks(bookmarks);
+      if (editId) {
+        const b = findById(editId);
+        if (b) {
+          b.name = name || "(senza nome)";
+          b.desc = desc || "";
+          b.url = url || "";
+          scheduleSave();
+        }
+      } else {
+        bookmarks.unshift({
+          id: uid(),
+          name: name || "(senza nome)",
+          desc: desc || "",
+          url: url || "",
+        });
+        await saveBookmarks(bookmarks);
+      }
+
       closeModal();
       render();
     });
@@ -487,26 +631,19 @@
         return;
       }
 
+      if (e.target?.closest?.(".ep-lb-edit")) {
+        openModal("edit", b);
+        return;
+      }
+
       if (e.target?.closest?.(".ep-lb-open")) {
-        updateFromRow(tr); // salva eventuali modifiche
         const finalUrl = normalizeUrl(b.url);
         if (!finalUrl) return;
 
-        // ✅ Apri fuori (nuova scheda), NON navigare nell'iframe
         try {
           w.open(finalUrl, "_blank", "noopener,noreferrer");
         } catch (_) {}
-
         return;
-      }
-    });
-
-    // Auto-save su input (delegate + debounce)
-    tbody?.addEventListener("input", (e) => {
-      const tr = e.target?.closest?.("tr[data-id]");
-      if (!tr) return;
-      if (e.target?.classList?.contains("ep-lb-name") || e.target?.classList?.contains("ep-lb-url")) {
-        updateFromRow(tr);
       }
     });
 
@@ -521,7 +658,7 @@
     url: "about:blank",
     title: "Link Bookmark",
 
-    // ✅ back arrow disabilitata per Link Bookmarks
+    // LinkBookmarks non naviga dentro iframe: back inutile
     backButton: false,
 
     ids: {
