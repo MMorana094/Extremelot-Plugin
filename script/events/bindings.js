@@ -167,6 +167,12 @@
             return callFeature(["features", "collegati", "open"]);
           };
 
+        case "link_bookmark":
+          return () => {
+            debugLog("[BIND] click link_bookmark");
+            return callFeature(["features", "linkBookmarks", "toggle"]);
+          };
+
         default:
           return null;
       }

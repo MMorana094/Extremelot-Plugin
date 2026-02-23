@@ -177,6 +177,8 @@
       wrap.dataset.openW = wrap.style.width;
       wrap.dataset.openH = wrap.style.height;
 
+      let iframe = null; // (serve anche per il pulsante Indietro)
+
       /* ================= BAR ================= */
       const bar = doc.createElement("div");
       if (ids.bar) bar.id = ids.bar;
@@ -200,6 +202,93 @@
       title.style.textOverflow = "ellipsis";
       title.style.paddingRight = "10px";
       title.style.color = TITLE_COLOR;
+
+
+      
+      // ================= BACK (sempre visibile, disabilitato se non c'è pagina precedente) =================
+      const wantBack = cfg.backButton !== false; // default: true
+
+      // Stack di navigazione "nostro" (cross-origin safe se possiamo leggere url; altrimenti usa iframe.src)
+      let navStack = [];
+      let navIndex = -1;
+
+      function getCurrentIframeUrl() {
+        let u = "";
+        try {
+          // same-origin: più affidabile
+          u = String(iframe?.contentWindow?.location?.href || "");
+        } catch (_) {
+          u = "";
+        }
+        if (!u) {
+          try {
+            u = String(iframe?.getAttribute?.("src") || iframe?.src || "");
+          } catch (_) {
+            u = "";
+          }
+        }
+        return String(u || "");
+      }
+
+      function updateBackButtonState() {
+        if (!btnBack) return;
+        const canBack = navIndex > 0;
+        btnBack.style.opacity = canBack ? "1" : "0.4";
+        btnBack.style.pointerEvents = canBack ? "auto" : "none";
+        btnBack.style.cursor = canBack ? "pointer" : "default";
+      }
+
+      const leftBox = doc.createElement("div");
+      leftBox.style.display = "flex";
+      leftBox.style.alignItems = "center";
+      leftBox.style.minWidth = "0";
+      leftBox.style.flex = "1";
+
+      let btnBack = null;
+      if (wantBack) {
+        btnBack = doc.createElement("button");
+        btnBack.textContent = "←";
+        btnBack.title = "Indietro";
+        btnBack.style.cursor = "default";
+        btnBack.style.border = "0";
+        btnBack.style.background = "transparent";
+        btnBack.style.color = BAR_TEXT;
+        btnBack.style.fontSize = "18px";
+        btnBack.style.lineHeight = "1";
+        btnBack.style.padding = "0 6px";
+        btnBack.style.marginRight = "6px";
+        btnBack.style.opacity = "0.4";
+        btnBack.style.pointerEvents = "none";
+
+        // evita che la freccia attivi il drag della titlebar
+        const stopDrag = (e) => {
+          try { e.stopPropagation?.(); } catch (_) {}
+          try { e.stopImmediatePropagation?.(); } catch (_) {}
+        };
+        ["pointerdown", "mousedown", "touchstart"].forEach((evt) => {
+          btnBack.addEventListener(evt, stopDrag, true);
+        });
+
+        btnBack.addEventListener("click", (e) => {
+          try { e.preventDefault?.(); } catch (_) {}
+          try { e.stopPropagation?.(); } catch (_) {}
+
+          if (navIndex <= 0) return;
+
+          navIndex = Math.max(0, navIndex - 1);
+          const target = navStack[navIndex] || "";
+          try {
+            // meglio forzare src: funziona anche se la pagina usa location.replace (no history nativa)
+            if (iframe) iframe.src = target;
+          } catch (_) {}
+
+          updateBackButtonState();
+        });
+
+        leftBox.appendChild(btnBack);
+      }
+
+      leftBox.appendChild(title);
 
       const controls = doc.createElement("div");
       controls.style.display = "flex";
@@ -244,11 +333,13 @@
       controls.appendChild(slider);
       controls.appendChild(btnMin);
       controls.appendChild(btnClose);
-      bar.appendChild(title);
+
+      bar.appendChild(leftBox);
       bar.appendChild(controls);
 
+
       /* ================= IFRAME ================= */
-      const iframe = doc.createElement("iframe");
+      iframe = doc.createElement("iframe");
       if (ids.iframe) iframe.id = ids.iframe;
       iframe.src = resolveUrl();
       iframe.style.width = "100%";
@@ -257,7 +348,87 @@
       iframe.style.display = "block";
       iframe.style.background = "#fff";
 
-      /* ================= RESIZER ================= */
+
+      // ================= HISTORY TRACK (per pulsante Indietro) =================
+      if (wantBack && iframe) {
+        // init stack con l'url iniziale (meglio del solo "load")
+        try {
+          const u0 = String(iframe.getAttribute("src") || iframe.src || "");
+          navStack = [u0];
+          navIndex = 0;
+        } catch (_) {
+          navStack = [];
+          navIndex = -1;
+        }
+        updateBackButtonState();
+
+        let hashHooked = false;
+
+        function pushUrl(u) {
+          u = String(u || "");
+          if (!u) return;
+
+          // evita duplicati consecutivi
+          if (navIndex >= 0 && navStack[navIndex] === u) {
+            updateBackButtonState();
+            return;
+          }
+
+          // se sono "tornato indietro" e poi navigo avanti, tronco lo stack
+          if (navIndex < navStack.length - 1) {
+            navStack = navStack.slice(0, navIndex + 1);
+          }
+
+          navStack.push(u);
+          navIndex = navStack.length - 1;
+
+          // cap per evitare crescita infinita
+          const MAX = 80;
+          if (navStack.length > MAX) {
+            const cut = navStack.length - MAX;
+            navStack = navStack.slice(cut);
+            navIndex = Math.max(0, navIndex - cut);
+          }
+
+          updateBackButtonState();
+        }
+
+        iframe.addEventListener(
+          "load",
+          function () {
+            try {
+              const u = getCurrentIframeUrl();
+              if (!u) return;
+
+              // about:blank: accetta solo se è diverso dall'attuale (di solito ritorno "home")
+              pushUrl(u);
+
+              // same-origin: intercetta hashchange (non genera load ma crea history)
+              if (!hashHooked) {
+                try {
+                  const win = iframe.contentWindow;
+                  const doc2 = iframe.contentDocument;
+                  if (win && doc2) {
+                    win.addEventListener(
+                      "hashchange",
+                      function () {
+                        try {
+                          const hu = String(win.location.href || "");
+                          if (hu) pushUrl(hu);
+                        } catch (_) {}
+                      },
+                      true
+                    );
+                    hashHooked = true;
+                  }
+                } catch (_) {}
+              }
+            } catch (_) {}
+          },
+          true
+        );
+      }
+/* ================= RESIZER ================= */
       const resizer = doc.createElement("div");
       if (ids.resizer) resizer.id = ids.resizer;
       resizer.style.position = "absolute";

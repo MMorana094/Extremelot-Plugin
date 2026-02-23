@@ -98,11 +98,12 @@
       <div class="comando" id="scelto_forum" title="Bacheca"><img src='https://tagete.altervista.org/plugin/bacheca.png'></div>
       <div class='comando' id='apri_online' title='Elenco online'><img src='https://tagete.altervista.org/plugin/presenti.png'></div>
       <div class="comando" id="leggiposta" title="Leggi posta"><img src='https://tagete.altervista.org/plugin/postai.png'></div>
-      <div class="comando" id="regole" title="Regolamenti"><img src='https://tagete.altervista.org/plugin/regole.png'></div>
       <div class="comando" id="scriviposta" title="Scrivi posta"><img src='https://tagete.altervista.org/plugin/scrivi.png'></div>
       <div class="comando" id="banca" title="Banca"><img src='https://tagete.altervista.org/plugin/banca.png'></div>
+      <div class="comando" id="regole" title="Regolamenti"><img src='https://tagete.altervista.org/plugin/regole.png'></div>
       <div class="comando" id="apri_editor" title="Editor azione"><img src='https://tagete.altervista.org/plugin/chat.png'></div>
       <div class="comando" id="gest_Chat" title="Gestionale"><img src='https://tagete.altervista.org/plugin/gestione.png'></div>
+      <div class="comando" id="link_bookmark" title="Link Bookmark"><i class="fa fa-bookmark"></i></div>
     `;
 
     debugLog("[MENU] injected (scelte)");

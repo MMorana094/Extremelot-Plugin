@@ -10,12 +10,12 @@
   "action": {
     "default_popup": "dialog.html"
   },
-"permissions": [
-  "storage",
-  "tabs",
-  "scripting",
-  "alarms"
-],
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "alarms"
+  ],
   "host_permissions": [
     "https://extremelot.eu/*",
     "https://www.extremelot.eu/*"
@@ -69,6 +69,7 @@
         "script/features/salvaChat.js",
         "script/features/lotInforma.js",
         "script/features/gestionale.js",
+        "script/features/linkBookmarks.js",
         "script/features/posta/posta.viewer.js",
         "script/features/posta/posta.urls.js",
         "script/features/posta/compose.js",
