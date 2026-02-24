@@ -50,6 +50,7 @@
         "script/core/debug.js",
         "script/core/dom.js",
         "script/core/pgData.js",
+        "script/ui/externalOverlayBrowser.js",
         "script/ui/overlay.js",
         "script/ui/getUiDoc.js",
         "script/security/iframeGuard.js",

@@ -1,7 +1,7 @@
 // script/features/linkBookmarks.js
 // Link Bookmark manager (tabella LOT + add/edit + persistenza locale)
 // UI: overlay factory (top-mounted) con iframe about:blank, contenuto iniettato.
-// NOTE: i link si aprono in nuova scheda (esterno).
+// NOTE: click su LINK (▶️) apre un NUOVO overlay browser interno (iframe) con back arrow attiva.
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -60,6 +60,24 @@
       .replace(/'/g, "&#039;");
   }
 
+  function clamp(n, min, max) {
+    n = Number(n);
+    if (!isFinite(n)) n = min;
+    max = Math.max(max, min);
+    if (n < min) return min;
+    if (n > max) return max;
+    return n;
+  }
+
+  function uid(prefix) {
+    const p = String(prefix || "id");
+    try {
+      return (crypto?.randomUUID?.() && (p + "_" + crypto.randomUUID())) || (p + "_" + Date.now() + "_" + Math.random().toString(16).slice(2));
+    } catch (_) {
+      return p + "_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+    }
+  }
+
   async function loadBookmarks() {
     const raw = await storageGet(STORAGE_KEY);
     if (!raw) return [];
@@ -79,11 +97,62 @@
     await storageSet(STORAGE_KEY, clean);
   }
 
-  function uid() {
+  // ---------------------------------------------------------
+  // ✅ Browser overlay interno: ogni click crea un overlay nuovo
+  // ---------------------------------------------------------
+  function openBrowserOverlay(url, title) {
+    const finalUrl = normalizeUrl(url);
+    if (!finalUrl) return false;
+
+    const id = uid("ep-extbrowser");
+
+    // title corto
+    const safeTitle = String(title || "Browser").trim() || "Browser";
+
+    const overlay = factory({
+      id,
+      url: finalUrl,
+      title: safeTitle,
+
+      // ✅ serve navigazione con back
+      backButton: true,
+
+      ids: {
+        iframe: id + "-iframe",
+        bar: id + "-bar",
+        slider: id + "-opacity",
+        btnMin: id + "-min",
+        btnClose: id + "-close",
+        resizer: id + "-resize",
+      },
+
+      size: { w: 980, h: 680, minW: 520, minH: 260 },
+      snap: { edgePad: 10, snapPx: 18 },
+
+      theme: {
+        wrapBorder: "1px solid rgba(0,0,0,0.35)",
+        barBg: "#6e0000",
+        barBorderBottom: "1px solid rgba(0,0,0,0.12)",
+        barTextColor: "#FFFFFF",
+        titleColor: "#FFFFFF",
+      },
+
+      minimize: { w: 560, h: 34, right: 12, bottom: 12 },
+
+      onAfterMount: function ({ iframe }) {
+        try {
+          // riduce leakage di referrer (non rompe)
+          iframe.setAttribute("referrerpolicy", "no-referrer");
+        } catch (_) {}
+      },
+    });
+
     try {
-      return crypto?.randomUUID?.() || ("id_" + Date.now() + "_" + Math.random().toString(16).slice(2));
-    } catch (_) {
-      return "id_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+      overlay.open();
+      return true;
+    } catch (e) {
+      debugLog("[linkBookmarks] openBrowserOverlay err", e);
+      return false;
     }
   }
 
@@ -105,11 +174,11 @@
   <title>Link Bookmark</title>
   <style>
     :root{
-      --bg: #f8e9aa;         /* fondo giallo LOT */
-      --header: #6e0000;     /* rosso scuro */
-      --grid: #d7caa0;       /* bordo griglia */
-      --rowA: #f7e7b1;       /* giallino */
-      --rowB: #c9cf86;       /* verdino */
+      --bg: #f8e9aa;
+      --header: #6e0000;
+      --grid: #d7caa0;
+      --rowA: #f7e7b1;
+      --rowB: #c9cf86;
       --text: #1b1b1b;
     }
 
@@ -136,7 +205,8 @@
       gap:8px;
       margin-bottom:8px;
     }
-    /* Bottone + stile titlebar */
+
+    /* + rosso stile titlebar */
     .btnPlus{
       width:28px;
       height:28px;
@@ -148,19 +218,15 @@
       line-height:1;
       border-radius:6px;
       border:1px solid rgba(0,0,0,0.35);
-      background: var(--header);   /* stesso rosso titlebar */
-      color:#ffffff;               /* + chiaro */
+      background: var(--header);
+      color:#ffffff;
       cursor:pointer;
       box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+      user-select:none;
     }
+    .btnPlus:hover{ filter: brightness(1.08); }
+    .btnPlus:active{ transform: translateY(1px); }
 
-    .btnPlus:hover{
-      filter: brightness(1.08);
-    }
-
-    .btnPlus:active{
-      transform: translateY(1px);
-    }
     .btn{
       cursor:pointer;
       user-select:none;
@@ -260,14 +326,12 @@
       filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25));
     }
 
-    /* icone gif LOT */
     .icoImg{
       width:20px;
       height:20px;
       display:block;
     }
 
-    /* favicon (icona sito) */
     .favImg{
       width:16px;
       height:16px;
@@ -405,7 +469,6 @@
     const doc = iframe?.contentDocument;
     if (!doc) return;
 
-    // evita doppio mount
     if (doc.__epLbMounted) return;
     doc.__epLbMounted = true;
 
@@ -424,11 +487,8 @@
 
     let bookmarks = [];
     let saveTimer = null;
-
-    // modalità modal: add o edit
     let editId = null;
 
-    // (1) e (2) icone LOT
     const ICON_DEL = "https://www.extremelot.eu/lotnew/img/features/eliminamsg2.gif";
     const ICON_EDIT = "https://www.extremelot.eu/lotnew/img/features/rispondimsg2.gif";
 
@@ -440,7 +500,6 @@
     }
 
     function playIconSvg() {
-      // "tastino play" per la colonna LINK
       return `
         <svg class="svg" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="2"/>
@@ -449,7 +508,6 @@
     }
 
     function safeOriginFavicon(url) {
-      // favicon del sito: origin + /favicon.ico
       try {
         const u = new URL(normalizeUrl(url));
         return u.origin.replace(/\/+$/, "") + "/favicon.ico";
@@ -459,7 +517,6 @@
     }
 
     function attachFaviconFallbacks() {
-      // se favicon non esiste -> fallback "globo"
       try {
         const imgs = doc.querySelectorAll("img.ep-lb-fav");
         imgs.forEach((img) => {
@@ -470,16 +527,7 @@
             "error",
             () => {
               try {
-                const svg = `
-                  <svg class="svg" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="2"/>
-                    <path d="M3 12h18" stroke="rgba(0,0,0,0.35)" stroke-width="1.6"/>
-                    <path d="M12 3c3.5 3.5 3.5 14 0 18" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.6"/>
-                    <path d="M12 3c-3.5 3.5-3.5 14 0 18" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.6"/>
-                  </svg>`;
-                const span = doc.createElement("span");
-                span.innerHTML = svg;
-                img.replaceWith(span.firstElementChild);
+                img.remove(); // se non c'è favicon, lascia vuoto
               } catch (_) {}
             },
             { once: true }
@@ -523,7 +571,6 @@
           const name = escapeHtml(b.name || "(senza nome)");
           const desc = escapeHtml(b.desc || "Descrizione facoltativa");
 
-          // ✅ favicon nella PRIMA colonna (icona sito)
           const fav = safeOriginFavicon(b.url);
           const favHtml = fav
             ? `<img class="favImg ep-lb-fav" src="${escapeHtml(fav)}" alt="" referrerpolicy="no-referrer" />`
@@ -531,17 +578,13 @@
 
           return `
             <tr data-id="${id}">
-              <td class="iconCell">
-                ${favHtml || ""}
-              </td>
+              <td class="iconCell">${favHtml}</td>
               <td class="siteCell">
                 <div class="siteName">${name}</div>
                 <div class="siteDesc">${desc}</div>
               </td>
               <td class="actCell">
-                <button class="icoBtn ep-lb-open" title="Apri">
-                  ${playIconSvg()}
-                </button>
+                <button class="icoBtn ep-lb-open" title="Apri">${playIconSvg()}</button>
               </td>
               <td class="actCell">
                 <button class="icoBtn ep-lb-edit" title="Modifica">
@@ -563,15 +606,12 @@
 
     async function boot() {
       bookmarks = await loadBookmarks();
-
-      // retro-compat: se in passato non c'era desc, normalizza
       bookmarks = bookmarks.map((b) => ({
-        id: String(b.id || uid()),
+        id: String(b.id || uid("bm")),
         name: String(b.name || ""),
         url: String(b.url || ""),
         desc: String(b.desc || ""),
       }));
-
       render();
     }
 
@@ -581,7 +621,6 @@
     // Modal
     btnX?.addEventListener("click", closeModal);
     btnCancel?.addEventListener("click", closeModal);
-
     modal?.addEventListener("click", (e) => {
       if (e.target === modal) closeModal();
     });
@@ -603,7 +642,7 @@
         }
       } else {
         bookmarks.unshift({
-          id: uid(),
+          id: uid("bm"),
           name: name || "(senza nome)",
           desc: desc || "",
           url: url || "",
@@ -640,9 +679,16 @@
         const finalUrl = normalizeUrl(b.url);
         if (!finalUrl) return;
 
-        try {
-          w.open(finalUrl, "_blank", "noopener,noreferrer");
-        } catch (_) {}
+        // ✅ SEMPRE overlay interno (nessuna dipendenza esterna)
+        const ok = openBrowserOverlay(finalUrl, b.name || "Browser");
+
+        // fallback extra: se per qualunque motivo l’overlay non parte
+        if (!ok) {
+          try {
+            (w.top || w).open(finalUrl, "_blank", "noopener,noreferrer");
+          } catch (_) {}
+        }
+
         return;
       }
     });
@@ -651,14 +697,12 @@
   }
 
   // ---------------------------------------------------------
-  // Overlay config
+  // Overlay config (LinkBookmarks)
   // ---------------------------------------------------------
   const overlay = factory({
     id: "ep-link-bookmarks-wrap",
     url: "about:blank",
     title: "Link Bookmark",
-
-    // LinkBookmarks non naviga dentro iframe: back inutile
     backButton: false,
 
     ids: {
