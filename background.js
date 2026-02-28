@@ -69,6 +69,8 @@ function epDetectBrowser() {
       const brands = uaData.brands.map((b) => String(b.brand || "").toLowerCase());
       if (brands.some((b) => b.includes("microsoft edge") || b.includes("edge"))) return "edge";
       if (brands.some((b) => b.includes("chromium") || b.includes("google chrome") || b.includes("chrome"))) return "chrome";
+      if (brands.some((b) => b.includes("opera") || b.includes("opr"))) return "opera";
+      if (brands.some((b) => b.includes("brave"))) return "brave";
     }
   } catch (_) {}
 
