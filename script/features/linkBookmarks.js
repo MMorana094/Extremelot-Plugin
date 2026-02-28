@@ -115,7 +115,7 @@
       title: safeTitle,
 
       // ✅ serve navigazione con back
-      backButton: true,
+      backButton: false,
 
       ids: {
         iframe: id + "-iframe",
