@@ -202,7 +202,8 @@ ${chatHtml}
 
       const { nome, luogo } = getPgInfo();
 
-      let chatHtml = chatDoc.body.innerHTML || "";
+      const msgBox = chatDoc.querySelector("#chat-messages");
+      let chatHtml = msgBox ? msgBox.innerHTML : "";
       chatHtml = decodeOldQuotes(chatHtml);
 
       const d = new Date();
