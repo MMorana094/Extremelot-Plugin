@@ -94,9 +94,6 @@
     // Titolo file: include timestamp leggibile + info base
     const d = new Date();
     const title = `[${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}] ${luogo} ${nome}`;
-
-    return `<!doctype html>
-<html>
 return `<!doctype html>
 <html>
 <head>
