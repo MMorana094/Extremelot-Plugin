@@ -33,10 +33,7 @@
     const topDoc = topWin.document;
 
     const resultDoc = getFrameDocByName("result", topDoc);
-    if (!resultDoc) return null;
-
-    const testoDoc = getFrameDocByName("testo", resultDoc);
-    return testoDoc;
+    return resultDoc;
   }
 
   function getPgInfo() {
