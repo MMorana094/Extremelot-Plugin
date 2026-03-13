@@ -97,10 +97,15 @@
 
     return `<!doctype html>
 <html>
+return `<!doctype html>
+<html>
 <head>
   <meta charset="UTF-8">
   <title>${escapeHtml(title)}</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+  <link rel="stylesheet" href="https://www.extremelot.eu/proc/chat/chat_taverne.css">
+
   <style>
     body {
       scrollbar-face-color: #F8E9AA;
