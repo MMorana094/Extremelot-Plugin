@@ -22,27 +22,47 @@
 
   const STORAGE_KEY = "EP_LINK_BOOKMARKS_V1";
 
-  function storageGet(key) {
-    return new Promise((resolve) => {
-      try {
-        if (!w.chrome?.storage?.local) return resolve(null);
-        chrome.storage.local.get([key], (res) => resolve(res ? res[key] : null));
-      } catch (_) {
-        resolve(null);
-      }
-    });
-  }
+  const storage = (() => {
+    if (typeof browser !== "undefined" && browser.storage && browser.storage.local) {
+      return {
+        get: (key) => browser.storage.local.get(key).then(res => res[key]),
+        set: (key, value) => browser.storage.local.set({ [key]: value })
+      };
+    }
 
-  function storageSet(key, value) {
-    return new Promise((resolve) => {
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+      return {
+        get: (key) => new Promise(resolve => {
+          chrome.storage.local.get([key], res => resolve(res ? res[key] : null));
+        }),
+        set: (key, value) => new Promise(resolve => {
+          chrome.storage.local.set({ [key]: value }, () => resolve());
+        })
+      };
+    }
+
+    // fallback (debug / pagina normale)
+    return {
+      get: async () => null,
+      set: async () => {}
+    };
+  })();
+
+    function storageGet(key) {
       try {
-        if (!w.chrome?.storage?.local) return resolve(false);
-        chrome.storage.local.set({ [key]: value }, () => resolve(true));
+        return storage.get(key);
       } catch (_) {
-        resolve(false);
+        return Promise.resolve(null);
       }
-    });
-  }
+    }
+
+    function storageSet(key, value) {
+      try {
+        return Promise.resolve(storage.set(key, value)).then(() => true);
+      } catch (_) {
+        return Promise.resolve(false);
+      }
+    }
 
   function normalizeUrl(u) {
     const s = String(u || "").trim();

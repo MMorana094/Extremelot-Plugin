@@ -1,7 +1,4 @@
 // features/salvaChat.js
-// SALVA CHAT (download locale) - frame-safe, no jQuery, no server
-// Output HTML con stile simile al template LOT: sfondo #F8E9AA + header centrato
-// Header: "Nome PG - Luogo - Data"
 
 (function (w) {
   w.ExtremePlug = w.ExtremePlug || {};
@@ -10,11 +7,8 @@
   const debugLog = w.ExtremePlug?.debug?.debugLog || function () {};
 
   function getTopWin() {
-    try {
-      return w.top || w;
-    } catch (_) {
-      return w;
-    }
+    try { return w.top || w; }
+    catch (_) { return w; }
   }
 
   function getFrameDocByName(name, rootDoc) {
@@ -27,215 +21,350 @@
     }
   }
 
-  // LOT: top -> frame result -> frame testo
   function getChatDoc() {
     const topWin = getTopWin();
     const topDoc = topWin.document;
+    return getFrameDocByName("result", topDoc);
+  }
 
-    const resultDoc = getFrameDocByName("result", topDoc);
-    return resultDoc;
+  function countMessages(container) {
+    try { return container.querySelectorAll(".chat-msg").length; }
+    catch { return 0; }
+  }
+
+  // ============================
+  // STATISTICHE CHAT
+  // ============================
+
+  function ComputeStats(container){
+
+    const msgs = container.querySelectorAll('.chat-msg');
+    const stats = {};
+
+    msgs.forEach(msg=>{
+
+      let nick = null;
+
+      const nickNode = msg.querySelector('.msg-nick');
+      if(nickNode){
+        nick = nickNode.textContent.trim();
+      }
+
+      if(!nick){
+        const span = msg.querySelector('span[style]');
+        if(span){
+          const txt = span.textContent.trim();
+          const m = txt.match(/^([^\[\n]+)/);
+          if(m) nick = m[1].trim();
+        }
+      }
+
+      if(!nick) return;
+
+      const clone = msg.cloneNode(true);
+
+      clone.querySelectorAll(
+        '.msg-nick,.msg-ora,.msg-razza,.msg-stemma,'+
+        '.msg-tag-pos,.msg-tag-status,.msg-tag-arcani,.msg-tag-png'
+      ).forEach(e=>e.remove());
+
+      const text = clone.textContent.trim();
+      const chars = text.length;
+
+      if(!stats[nick]){
+        stats[nick] = {
+          actions:0,
+          chars:0
+        };
+      }
+
+      stats[nick].actions++;
+      stats[nick].chars += chars;
+
+    });
+
+    const result = {};
+
+    Object.keys(stats).forEach(nick=>{
+      result[nick] = {
+        actions: stats[nick].actions,
+        avgChars: Math.round(stats[nick].chars / stats[nick].actions)
+      };
+    });
+
+    return result;
+  }
+
+  function buildStatsHtml(stats) {
+
+    const rows = Object.entries(stats)
+      .sort((a,b)=>b[1].actions-a[1].actions)
+      .map(([pg,s])=>`
+        <tr>
+          <td>${escapeHtml(pg)}</td>
+          <td style="text-align:center">${s.actions}</td>
+          <td style="text-align:center">${s.avgChars}</td>
+        </tr>
+      `).join("");
+
+    return `
+    <div style="margin-top:10px;">
+      <p style="text-align:center;font-family:verdana;font-size:14px;color:#444;">
+        Statistiche
+      </p>
+      <table style="margin:auto;font-family:verdana;font-size:12px;border-collapse:collapse;">
+        <tr>
+          <th style="padding:4px 8px;">PG</th>
+          <th style="padding:4px 8px;">Azioni</th>
+          <th style="padding:4px 8px;">Media caratteri</th>
+        </tr>
+        ${rows}
+      </table>
+    </div>`;
+  }
+
+  function convertActionBrackets(html) {
+    const container = document.createElement("div");
+    container.innerHTML = html;
+
+    const msgs = container.querySelectorAll(".chat-msg");
+
+    msgs.forEach(msg => {
+      const pos = msg.querySelector(".msg-tag-pos");
+      if (!pos) return;
+
+      let node = pos.nextSibling;
+
+      while (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          node.textContent = node.textContent
+            .replace(/[\(\[\{]/g, "<")
+            .replace(/[\)\]\}]/g, ">");
+        }
+        node = node.nextSibling;
+      }
+    });
+
+    return container.innerHTML;
   }
 
   function getPgInfo() {
+
     const topWin = getTopWin();
     const topDoc = topWin.document;
-
     const logoDoc = getFrameDocByName("logo", topDoc);
-    if (!logoDoc) return { nome: "Sconosciuto", luogo: "Luogo sconosciuto" };
+
+    if (!logoDoc) return { nome:"Sconosciuto", luogo:"Luogo sconosciuto" };
 
     const nome = (logoDoc.querySelector("input[name='player']")?.value || "Sconosciuto").trim();
-
     let luogo = (logoDoc.querySelector("input[name='titolo']")?.value || "Luogo sconosciuto").trim();
-    luogo = luogo.replace(/<\/?b>/gi, "").trim();
+
+    luogo = luogo.replace(/<\/?b>/gi,"").trim();
 
     return { nome, luogo };
   }
 
   function decodeOldQuotes(html) {
-    // Compat vecchio formato: &lt; e &gt; -> « »
     return String(html || "")
       .replace(/\&gt;/g, "»</i>")
       .replace(/\&lt;/g, "<i>«");
   }
 
+  function stripScripts(html) {
+    return String(html || "").replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi,"");
+  }
+
+  function stripInlineEvents(html) {
+    return String(html || "").replace(/\son\w+="[^"]*"/gi,"");
+  }
+
   function makeFileSafeName(s) {
-    return String(s || "")
-      .replace(/[\\/:*?"<>|]+/g, "_")
-      .replace(/\s+/g, " ")
+    return String(s||"")
+      .replace(/[\\/:*?"<>|]+/g,"_")
+      .replace(/\s+/g," ")
       .trim()
-      .slice(0, 80);
+      .slice(0,80);
   }
 
-  function pad2(n) {
-    n = String(n);
-    return n.length === 1 ? "0" + n : n;
+  function pad2(n){
+    n=String(n);
+    return n.length===1?"0"+n:n;
   }
 
-  function escapeHtml(s) {
+  function escapeHtml(s){
     return String(s ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
   }
 
-  function formatHumanDate(d) {
-    const mesi = [
-      "gennaio", "febbraio", "marzo", "aprile",
-      "maggio", "giugno", "luglio", "agosto",
-      "settembre", "ottobre", "novembre", "dicembre"
-    ];
+  function formatHumanDate(d){
+    const mesi=["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
     return `${d.getDate()} ${mesi[d.getMonth()]} ${d.getFullYear()}`;
   }
 
-  function buildHtmlDocument({ nome, luogo, chatHtml, dataHuman }) {
-    // Stile preso dal tuo template di riferimento :contentReference[oaicite:1]{index=1}
-    // Titolo file: include timestamp leggibile + info base
-    const d = new Date();
-    const title = `[${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}] ${luogo} ${nome}`;
-return `<!doctype html>
+  function buildHtmlDocument({nome,luogo,chatHtml,dataHuman,count,statsHtml}){
+
+    const d=new Date();
+    const title=`[${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}] ${luogo} ${nome}`;
+
+    return `<!doctype html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>${escapeHtml(title)}</title>
-  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<title>${escapeHtml(title)}</title>
 
-  <link rel="stylesheet" href="https://www.extremelot.eu/proc/chat/chat_taverne.css">
+<link rel="stylesheet" href="https://www.extremelot.eu/proc/chat/chat_taverne.css">
 
-  <style>
-    body {
-      scrollbar-face-color: #F8E9AA;
-      padding: 10px;
-      scrollbar-arrow-color: #af7840;
-      scrollbar-track-color: #F8E9AA;
-      scrollbar-shadow-color: #af7840;
-      scrollbar-highlight-color: #F8E9AA;
-      scrollbar-3dlight-color: #FFFFFF;
-      scrollbar-darkshadow-color: #F8E9AA;
-      background-color: #F8E9AA;
-    }
-    i { color: #434343; }
-  </style>
+<style>
+body{
+background:#F8E9AA;
+padding:10px;
+}
+i{color:#434343;}
+</style>
 </head>
-<body bgcolor="#F8E9AA" marginwidth="0" marginheight="0">
-  <div style="text-align:justify; margin:5px;">
-    <p style="font-size:18px; font-family:verdana; color:#808000; text-align:center;">
-      ${escapeHtml(nome)} - ${escapeHtml(luogo)} - ${escapeHtml(dataHuman)}
-    </p>
-    <hr size="1">
-    <font face="Verdana, Arial" size="2">
+
+<body>
+
+<div style="text-align:justify;margin:5px;">
+
+<p style="font-size:18px;font-family:verdana;color:#808000;text-align:center;">
+${escapeHtml(nome)} - ${escapeHtml(luogo)} - ${escapeHtml(dataHuman)}
+</p>
+
+<p style="text-align:center;font-family:verdana;font-size:12px;color:#444;">
+Azioni salvate: <b>${count}</b>
+</p>
+
+${statsHtml}
+
+<hr>
+
+<font face="Verdana, Arial" size="2">
 ${chatHtml}
-    </font>
-  </div>
+</font>
+
+</div>
+
 </body>
 </html>`;
   }
 
-  function downloadHtml(filename, text) {
-    const topWin = getTopWin();
-    const doc = topWin.document;
+  function downloadHtml(filename,text){
 
-    // Assicura body disponibile
-    if (!doc.body) {
-      debugLog("[salva_chat] download: top document body missing");
-      return false;
-    }
+    const topWin=getTopWin();
+    const doc=topWin.document;
 
-    const blob = new Blob([text], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    if(!doc.body) return false;
 
-    const a = doc.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.style.display = "none";
+    const blob=new Blob([text],{type:"text/html;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+
+    const a=doc.createElement("a");
+    a.href=url;
+    a.download=filename;
+    a.style.display="none";
+
     doc.body.appendChild(a);
-
     a.click();
 
-    setTimeout(() => {
-      try { URL.revokeObjectURL(url); } catch (_) {}
-      try { a.remove(); } catch (_) {}
-    }, 800);
+    setTimeout(()=>{
+      try{URL.revokeObjectURL(url);}catch(_){}
+      try{a.remove();}catch(_){}
+    },800);
 
     return true;
   }
 
-  function toast(msg) {
-    try {
-      const topWin = getTopWin();
-      const doc = topWin.document;
+  function toast(msg){
 
-      const id = "ep-toast-salvachat";
-      const old = doc.getElementById(id);
-      if (old) old.remove();
+    try{
 
-      const el = doc.createElement("div");
-      el.id = id;
-      el.textContent = msg;
-      el.style.position = "fixed";
-      el.style.left = "50%";
-      el.style.bottom = "14px";
-      el.style.transform = "translateX(-50%)";
-      el.style.zIndex = "2147483647";
-      el.style.background = "rgba(0,0,0,0.78)";
-      el.style.color = "#fff";
-      el.style.padding = "10px 12px";
-      el.style.borderRadius = "8px";
-      el.style.font = "13px Arial";
-      el.style.pointerEvents = "none";
+      const topWin=getTopWin();
+      const doc=topWin.document;
+
+      const el=doc.createElement("div");
+
+      el.textContent=msg;
+      el.style.position="fixed";
+      el.style.left="50%";
+      el.style.bottom="14px";
+      el.style.transform="translateX(-50%)";
+      el.style.zIndex="2147483647";
+      el.style.background="rgba(0,0,0,0.78)";
+      el.style.color="#fff";
+      el.style.padding="10px 12px";
+      el.style.borderRadius="8px";
+      el.style.font="13px Arial";
+
       doc.documentElement.appendChild(el);
 
-      setTimeout(() => el.remove(), 3200);
-    } catch (_) {}
+      setTimeout(()=>el.remove(),3200);
+
+    }catch(_){}
   }
 
-  function run() {
-    try {
-      // mantiene l’azione “utente” nel top contesto per download
-      try { getTopWin().focus?.(); } catch (_) {}
+  function run(){
 
-      const chatDoc = getChatDoc();
-      if (!chatDoc?.body) {
+    try{
+
+      const chatDoc=getChatDoc();
+
+      if(!chatDoc?.body){
         toast("SalvaChat: frame chat non trovato");
-        debugLog("[salva_chat] frame chat non trovato");
         return;
       }
 
-      const { nome, luogo } = getPgInfo();
+      const {nome,luogo}=getPgInfo();
+      const msgBox=chatDoc.querySelector("#chat-messages");
 
-      const msgBox = chatDoc.querySelector("#chat-messages");
-      let chatHtml = msgBox ? msgBox.innerHTML : "";
-      chatHtml = decodeOldQuotes(chatHtml);
+      if(!msgBox){
+        toast("SalvaChat: messaggi non trovati");
+        return;
+      }
 
-      const d = new Date();
-      const dataHuman = formatHumanDate(d);
+      let chatHtml=msgBox.innerHTML;
 
-      const outHtml = buildHtmlDocument({
+      chatHtml=convertActionBrackets(chatHtml);
+      chatHtml=decodeOldQuotes(chatHtml);
+      chatHtml=stripScripts(chatHtml);
+      chatHtml=stripInlineEvents(chatHtml);
+
+      const d=new Date();
+      const dataHuman=formatHumanDate(d);
+      const count=countMessages(msgBox);
+
+      const stats=ComputeStats(msgBox);
+      const statsHtml=buildStatsHtml(stats);
+
+      const outHtml=buildHtmlDocument({
         nome,
         luogo,
         chatHtml,
-        dataHuman
+        dataHuman,
+        count,
+        statsHtml
       });
 
-      const stamp = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}`;
-      const file = `${makeFileSafeName(nome)} - ${makeFileSafeName(luogo)} - ${stamp}.html`;
+      const stamp=`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}`;
 
-      const ok = downloadHtml(file, outHtml);
-      if (ok) {
-        toast("Chat salvata: download avviato");
-        debugLog("[salva_chat] download:", file);
-      } else {
-        toast("SalvaChat: impossibile avviare download");
-        debugLog("[salva_chat] download failed");
-      }
-    } catch (e) {
-      console.error("[salva_chat] errore:", e);
-      toast("SalvaChat: errore (vedi console)");
+      const file=`${makeFileSafeName(nome)} - ${makeFileSafeName(luogo)} - ${stamp}.html`;
+
+      const ok=downloadHtml(file,outHtml);
+
+      if(ok) toast("Chat salvata");
+
+    }catch(e){
+      console.error("[salva_chat] errore:",e);
+      toast("SalvaChat errore");
     }
   }
 
-  w.ExtremePlug.features.salvaChat = { run };
+  w.ExtremePlug.features.salvaChat={ run };
 
-  debugLog("[salva_chat] loaded (download-only)");
+  debugLog("[salva_chat] loaded");
+
 })(window);
