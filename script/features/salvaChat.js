@@ -36,7 +36,7 @@
   // STATISTICHE CHAT
   // ============================
 
-  function ComputeStats(container){
+  function ComputeStats(container, nome){
 
     const msgs = container.querySelectorAll('.chat-msg');
     const stats = {};
@@ -60,6 +60,7 @@
       }
 
       if(!nick) return;
+      if(/\s+-/.test(nick)) return;
 
       const clone = msg.cloneNode(true);
 
@@ -123,6 +124,35 @@
     </div>`;
   }
 
+  function swapTagPos(html) {
+    const container = document.createElement("div");
+    container.innerHTML = html;
+
+    // Cicla tutti i messaggi
+    const msgs = container.querySelectorAll(".chat-msg");
+
+    msgs.forEach(msg => {
+      const tags = msg.querySelectorAll(".msg-tag-pos");
+
+      tags.forEach(tag => {
+        const testo = tag.textContent.trim();
+
+        // Controlla che il testo sia del tipo [qualcosa]
+        if (testo.startsWith("[") && testo.endsWith("]")) {
+          const contenuto = testo.slice(1, -1).trim();
+
+          // Nuovo HTML
+          const nuovoHTML = `<font size="1" color="#606060"><b>[ ${contenuto} ]</b></font>`;
+
+          // Sostituisci lo span originale
+          tag.outerHTML = nuovoHTML;
+        }
+      });
+    });
+
+    return container.innerHTML;
+  }
+
   function convertActionBrackets(html) {
     const container = document.createElement("div");
     container.innerHTML = html;
@@ -165,9 +195,21 @@
   }
 
   function decodeOldQuotes(html) {
-    return String(html || "")
-      .replace(/\&gt;/g, "»</i>")
-      .replace(/\&lt;/g, "<i>«");
+    const container = document.createElement("div");
+    container.innerHTML = html;
+
+    const msgs = container.querySelectorAll(".chat-msg");
+
+    msgs.forEach(msg => {
+      // Salta i messaggi del fato
+      if (msg.querySelector(".msg-fato-box")) return;
+
+      msg.innerHTML = String(msg.innerHTML || "")
+        .replace(/\&gt;/g, "»</i>")
+        .replace(/\&lt;/g, "<i>«");
+    });
+
+    return container.innerHTML;
   }
 
   function stripScripts(html) {
@@ -216,7 +258,7 @@
 <meta charset="UTF-8">
 <title>${escapeHtml(title)}</title>
 
-<link rel="stylesheet" href="https://www.extremelot.eu/proc/chat/chat_taverne.css">
+<link rel="stylesheet" href="https://colossus.altervista.org/LOT/chat_taverne.css">
 
 <style>
 body{
@@ -332,12 +374,13 @@ ${chatHtml}
       chatHtml=decodeOldQuotes(chatHtml);
       chatHtml=stripScripts(chatHtml);
       chatHtml=stripInlineEvents(chatHtml);
+      chatHtml=swapTagPos(chatHtml);
 
       const d=new Date();
       const dataHuman=formatHumanDate(d);
       const count=countMessages(msgBox);
 
-      const stats=ComputeStats(msgBox);
+      const stats = ComputeStats(msgBox, nome);
       const statsHtml=buildStatsHtml(stats);
 
       const outHtml=buildHtmlDocument({
