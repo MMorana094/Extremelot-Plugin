@@ -55,7 +55,7 @@
         if(span){
           const txt = span.textContent.trim();
           const m = txt.match(/^([^\[\n]+)/);
-          if(m) nick = m[1].trim();
+          if(m) nick = m[1].split(/\s{2,}/)[0].trim();
         }
       }
 
@@ -142,7 +142,7 @@
           const contenuto = testo.slice(1, -1).trim();
 
           // Nuovo HTML
-          const nuovoHTML = `<font size="1" color="#606060"><b>[ ${contenuto} ]</b></font>`;
+          const nuovoHTML = `<font size="1" color="#606060"><b>[${contenuto}]</b></font>`;
 
           // Sostituisci lo span originale
           tag.outerHTML = nuovoHTML;
@@ -205,8 +205,8 @@
       if (msg.querySelector(".msg-fato-box")) return;
 
       msg.innerHTML = String(msg.innerHTML || "")
-        .replace(/\&gt;/g, "»</i>")
-        .replace(/\&lt;/g, "<i>«");
+        .replace(/\&gt;/g,"»</i>")
+        .replace(/\&lt;/g,"<i>«");
     });
 
     return container.innerHTML;
