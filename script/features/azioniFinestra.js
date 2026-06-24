@@ -17,7 +17,7 @@
 
   const overlay = factory({
     id: "ep-azioni-wrap",
-    url: "https://www.extremelot.eu/proc/azioni_21.asp",
+    url: "https://www.extremelot.eu/proc/azioni_26.asp",
     title: "Azioni nel Luogo",
     backButton: false,
     ids: {
