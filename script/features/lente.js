@@ -17,7 +17,7 @@
 
   const overlay = factory({
     id: "ep-descLuogo-wrap",
-    url: "https://www.extremelot.eu/proc/vedi_desc_21.asp",
+    url: "https://www.extremelot.eu/proc/chat/chat_mappa_quest.asp?mode=accadimenti",
     title: "Descrizione del luogo",
     backButton: false,
     ids: {
