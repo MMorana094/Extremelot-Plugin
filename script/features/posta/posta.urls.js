@@ -10,7 +10,7 @@
   const debugLog = w.ExtremePlug?.debug?.debugLog || function () {};
 
   // Config canonica (se un domani cambia, aggiorni qui)
-  const START_URL = "https://www.extremelot.eu/proc/posta/leggilaposta.asp";
+  const START_URL = "https://www.extremelot.eu/proc/postanew/index.asp";
   const SCRIVI_BASE = "https://www.extremelot.eu/proc/posta/scrivialtri.asp";
 
   function getPgName() {

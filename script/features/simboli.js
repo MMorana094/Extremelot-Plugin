@@ -15,7 +15,7 @@
 
   const overlay = factory({
     id: "ep-simboli-wrap",
-    url: "https://www.extremelot.eu/lotnew/simboli.asp",
+    url: "https://www.extremelot.eu/lotnew/simbolinew.asp",
     title: "Simboli",
     ids: {
       iframe: "ep-simboli-iframe",

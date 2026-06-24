@@ -17,7 +17,7 @@
 
   const overlay = factory({
     id: "ep-regole-wrap",
-    url: "https://www.extremelot.eu/proc/regole/regole2.html",
+    url: "https://www.extremelot.eu/link/regolenew/index.html",
     title: "Regole",
     backButton: false,
     ids: {

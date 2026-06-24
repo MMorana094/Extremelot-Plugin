@@ -187,7 +187,7 @@
     const doc = ui?.getUiDoc ? ui.getUiDoc() : null;
     const $ = ui?.get$ForDoc ? ui.get$ForDoc(doc) : null;
 
-    const startUrl = urls?.START_URL || "https://www.extremelot.eu/proc/posta/leggilaposta.asp";
+    const startUrl = urls?.START_URL || "https://www.extremelot.eu/proc/postanew/index.asp";
 
     if (!doc?.body) {
       debugLog("[POSTA] open: UI doc non trovato (getUiDoc mancante o frameset non pronto)");
