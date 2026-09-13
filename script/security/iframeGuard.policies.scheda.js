@@ -49,13 +49,23 @@
     const debugPrefix = String(params?.debugPrefix || "[scheda]");
     const onclickResolver = makeOnclickResolver({ schedaBaseUrl: params?.schedaBaseUrl });
 
+    // ✅ NEW: callback esterne opzionali (usate da scheda.js per lo stack Undo/Redo)
+    const extOnBeforeNavigate = typeof params?.onBeforeNavigate === "function" ? params.onBeforeNavigate : null;
+    const extOnBlocked = typeof params?.onBlocked === "function" ? params.onBlocked : null;
+
     return {
       baseUrl,
       blockList: [blockPosta],
       helpers: { onclickResolver },
       handlers: {
-        onBlocked: (abs, ctx) => debugLog(debugPrefix + "[guard] blocked", { abs, ctx }),
-        onBeforeNavigate: (abs, ctx) => debugLog(debugPrefix + "[guard] navigate->iframe", { abs, ctx }),
+        onBlocked: (abs, ctx) => {
+          debugLog(debugPrefix + "[guard] blocked", { abs, ctx });
+          try { extOnBlocked && extOnBlocked(abs, ctx); } catch (_) {}
+        },
+        onBeforeNavigate: (abs, ctx) => {
+          debugLog(debugPrefix + "[guard] navigate->iframe", { abs, ctx });
+          try { extOnBeforeNavigate && extOnBeforeNavigate(abs, ctx); } catch (_) {}
+        },
       },
     };
   }
@@ -75,6 +85,9 @@
       baseUrl,
       schedaBaseUrl: params?.schedaBaseUrl,
       debugPrefix: params?.debugPrefix || "[scheda]",
+      // ✅ NEW: pass-through per Undo/Redo (opzionali)
+      onBeforeNavigate: params?.onBeforeNavigate,
+      onBlocked: params?.onBlocked,
     });
     guard(iframeEl, cfg);
   }

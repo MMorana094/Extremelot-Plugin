@@ -178,11 +178,17 @@
   // =========================================================
   // Policy attach
   // =========================================================
-  function attachSchedaGuardPolicy(iframeEl) {
+  function attachSchedaGuardPolicy(iframeEl, extra) {
     try {
       const attach = w.ExtremePlug?.security?.iframeGuardPolicies?.scheda?.attachSchedaPolicy;
       if (typeof attach === "function") {
-        attach(iframeEl, { schedaBaseUrl: SCHEDA_BASE_URL, debugPrefix: "[scheda]" });
+        attach(iframeEl, {
+          schedaBaseUrl: SCHEDA_BASE_URL,
+          debugPrefix: "[scheda]",
+          // ✅ NEW: hook per lo stack Undo/Redo del viewer
+          onBeforeNavigate: extra?.onBeforeNavigate,
+          onBlocked: extra?.onBlocked,
+        });
       }
     } catch (_) {}
   }
@@ -218,6 +224,132 @@
     const $dlg = $(doc).find("#ep-dialog-scheda-viewer");
     const pos = LAST_VIEWER_POS || getDefaultViewerPos(doc);
 
+    // =========================================================
+    // ✅ NEW: Undo/Redo — stack di navigazione locale a questa sessione
+    // del dialog (vive dall'apertura alla chiusura di QUESTO viewer).
+    // =========================================================
+    let navStack = [url];
+    let navIndex = 0;
+    let $btnUndo = null;
+    let $btnRedo = null;
+
+    function updateNavButtonsState() {
+      if ($btnUndo && $btnUndo.length) {
+        const canBack = navIndex > 0;
+        $btnUndo.css({
+          opacity: canBack ? "0.95" : "0.35",
+          pointerEvents: canBack ? "auto" : "none",
+          cursor: canBack ? "pointer" : "default",
+        });
+      }
+      if ($btnRedo && $btnRedo.length) {
+        const canFwd = navIndex < navStack.length - 1;
+        $btnRedo.css({
+          opacity: canFwd ? "0.95" : "0.35",
+          pointerEvents: canFwd ? "auto" : "none",
+          cursor: canFwd ? "pointer" : "default",
+        });
+      }
+    }
+
+    function pushNavUrl(abs) {
+      const u = String(abs || "");
+      if (!u) return;
+
+      // evita duplicati consecutivi (stesso link cliccato due volte)
+      if (navIndex >= 0 && navStack[navIndex] === u) {
+        updateNavButtonsState();
+        return;
+      }
+
+      // se ero tornato indietro con Undo e ora navigo su un nuovo link,
+      // il "futuro" (Redo) precedente non è più valido: lo tronco
+      if (navIndex < navStack.length - 1) {
+        navStack = navStack.slice(0, navIndex + 1);
+      }
+
+      navStack.push(u);
+      navIndex = navStack.length - 1;
+
+      updateNavButtonsState();
+    }
+
+    function navigateStack(dir) {
+      const iframeEl = $dlg.find("iframe.ep-scheda-iframe")[0];
+      if (!iframeEl) return;
+
+      if (dir === "back" && navIndex > 0) {
+        navIndex -= 1;
+      } else if (dir === "forward" && navIndex < navStack.length - 1) {
+        navIndex += 1;
+      } else {
+        return;
+      }
+
+      const target = navStack[navIndex];
+      try { iframeEl.src = target; } catch (_) {}
+
+      updateNavButtonsState();
+    }
+
+    function insertNavControls($dlgEl) {
+      try {
+        const $wrap = $dlgEl.closest(".ui-dialog");
+        if (!$wrap.length) return;
+
+        const $bar = $wrap.find(".ui-dialog-titlebar");
+        if (!$bar.length || $bar.find(".ep-nav-controls").length) return;
+
+        const $navWrap = $(doc.createElement("div"));
+        $navWrap.addClass("ep-nav-controls").css({
+          display: "flex",
+          alignItems: "center",
+          gap: "2px",
+          float: "left",
+          marginRight: "6px",
+        });
+
+        // ✅ riusa la classe .ep-titlebtn già definita da jqui.ensureDialogStyle
+        // per dialogClass "ep-scheda-viewer-ui": nessun nuovo CSS necessario.
+        $btnUndo = $(doc.createElement("div"))
+          .addClass("ep-titlebtn ep-scheda-undo")
+          .attr("title", "Indietro")
+          .text("←");
+
+        $btnRedo = $(doc.createElement("div"))
+          .addClass("ep-titlebtn ep-scheda-redo")
+          .attr("title", "Avanti")
+          .text("→");
+
+        const stopDrag = (e) => {
+          try { e.stopPropagation(); } catch (_) {}
+          try { e.stopImmediatePropagation(); } catch (_) {}
+        };
+        [$btnUndo, $btnRedo].forEach(($b) => {
+          ["pointerdown", "mousedown", "touchstart"].forEach((evt) => $b.on(evt, stopDrag));
+        });
+
+        $btnUndo.on("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          navigateStack("back");
+        });
+
+        $btnRedo.on("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          navigateStack("forward");
+        });
+
+        $navWrap.append($btnUndo, $btnRedo);
+        $bar.prepend($navWrap);
+
+        updateNavButtonsState();
+      } catch (e) {
+        debugLog("[scheda] insertNavControls error", e);
+      }
+    }
+
     $dlg.dialog({
       title: "Scheda " + id,
       width: VIEWER_W,
@@ -239,8 +371,16 @@
         const jqui = getJqui();
         if (jqui) jqui.addTitleControls(doc, $, $dlg, "scheda_viewer");
 
+        // ✅ NEW: pulsanti Undo/Redo nella titlebar
+        insertNavControls($dlg);
+
         const iframeEl = $dlg.find("iframe.ep-scheda-iframe")[0];
-        try { attachSchedaGuardPolicy(iframeEl); } catch (_) {}
+        try {
+          attachSchedaGuardPolicy(iframeEl, {
+            // ogni navigazione interna (es. dettagli('Nome')) alimenta lo stack
+            onBeforeNavigate: (abs) => pushNavUrl(abs),
+          });
+        } catch (_) {}
       },
 
       close: function () {
